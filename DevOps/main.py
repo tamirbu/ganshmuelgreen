@@ -8,6 +8,8 @@ def webhook():
     event = request.get_json()
     print(event)
     print(request)
+    app.logger.info(str(event))
+    app.logger.info(str(request))
     return jsonify({'message': 'Webhook received'}), 200
 
 if __name__ == '__main__':
