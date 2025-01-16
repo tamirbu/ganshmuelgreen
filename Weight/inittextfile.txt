@@ -1,0 +1,1 @@
+some text file to the first commit with the directories
