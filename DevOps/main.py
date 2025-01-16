@@ -6,6 +6,13 @@ app = Flask(__name__)
 @app.route('/webhook', methods=['POST'])
 def webhook():
     event = request.get_json()
+    jsonBranch = event.get('ref') #'ref' is the JSON field containing the branch
+    if jsonBranch and jsonBranch.startswith('refs/heads'):
+        branchName = jsonBranch.split('/')[-1]
+    else: 
+        branchName = None # if 'ref' is not in the expected format or branch does not exist
+        
+    contInit(branchName)
     print(event)
     print(request)
     app.logger.info(str(event))
