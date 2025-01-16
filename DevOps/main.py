@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify
-
+import subprocess
 
 app = Flask(__name__)
 
@@ -11,8 +11,12 @@ def webhook():
         branchName = jsonBranch.split('/')[-1]
     else: 
         branchName = None # if 'ref' is not in the expected format or branch does not exist
-        
-    contInit(branchName)
+
+    try:
+        #running bash script with branchName as given arg, check for errors if exit!=0
+        subprocess.run(['./contInit', branchName], check=True) 
+    except subprocess.CalledProcessError as e:
+        print(f"Error running bash script: {e}")
     print(event)
     print(request)
     app.logger.info(str(event))
