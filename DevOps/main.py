@@ -16,10 +16,8 @@ def webhook():
         #running bash script with branchName as given arg, check for errors if exit!=0
         subprocess.run(['./builder.sh', branchName], check=True) 
     except subprocess.CalledProcessError as e:
-        print(f"Error running bash script: {e}")
-    print(event)
-    print(request)
-    app.logger.info(str(event))
+        app.logger.error(f"ERROR: {e}")
+    app.logger.info(f"Building: {branchName}")
     app.logger.info(str(request))
     return jsonify({'message': 'Webhook received'}), 200
 
