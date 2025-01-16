@@ -1,4 +1,4 @@
-from flask import Flask, jsonify
+from flask import Flask, request, jsonify
 import mysql.connector
 import os
 
@@ -19,9 +19,38 @@ def get_db_connection():
         password=db_password
     )
 
+@app.route("/provider", methods=["POST"])
+def add_provider():
+    data = request.get_json()
+
+    if not data or "name" not in data:
+        return jsonify({f"error": "Missing provider name"}), 400
+
+    provider_name = data["name"]
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        query = "INSERT INTO Provider (name) VALUES (%s)"
+        cursor.execute(query, (provider_name,))
+        conn.commit()
+
+        provider_id = cursor.lastrowid  # קבלת ה-ID החדש
+
+        cursor.close()
+        conn.close()
+
+        return jsonify({"id": provider_id, "name": provider_name}), 201
+
+    except mysql.connector.Error as err:
+        return jsonify({"error": str(err)}), 500
+
+    
 @app.route("/")
 def index():
     return "Welcome to the Flask App!"
+
 
 @app.route("/health")
 def health_check():
