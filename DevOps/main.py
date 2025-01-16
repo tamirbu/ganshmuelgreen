@@ -14,7 +14,7 @@ def webhook():
 
     try:
         #running bash script with branchName as given arg, check for errors if exit!=0
-        subprocess.run(['./contInit', branchName], check=True) 
+        subprocess.run(['./builder.sh', branchName], check=True) 
     except subprocess.CalledProcessError as e:
         print(f"Error running bash script: {e}")
     print(event)
