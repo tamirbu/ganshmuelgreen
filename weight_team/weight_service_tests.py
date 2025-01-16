@@ -10,8 +10,7 @@ class WeightServiceTest(unittest.TestCase):
 
     This suite uses mock data from provided CSV and JSON files to simulate
     real-world inputs and validate API functionality without relying on
-    a live database. Paths have been updated to align with the specified
-    directory structure.
+    a live database.
     """
 
     @classmethod
@@ -24,16 +23,25 @@ class WeightServiceTest(unittest.TestCase):
         cls.mock_containers = []
         cls.mock_trucks = []
 
-        # Load mock data from containers1.csv and containers2.csv
-        for file_name in ['./sample_files/sample_uploads/containers1.csv', './sample_files/sample_uploads/containers2.csv']:
-            with open(file_name, 'r') as f:
-                reader = csv.DictReader(f)
-                for row in reader:
-                    cls.mock_containers.append({
-                        "id": row['id'],
-                        "weight": int(row['weight']),
-                        "unit": row['unit']
-                    })
+        # Load mock data from containers1.csv
+        with open('./sample_files/sample_uploads/containers1.csv', 'r') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                cls.mock_containers.append({
+                    "id": row['id'],
+                    "weight": float(row['kg']),
+                    "unit": "kg"
+                })
+
+        # Load mock data from containers2.csv
+        with open('./sample_files/sample_uploads/containers2.csv', 'r') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                cls.mock_containers.append({
+                    "id": row['id'],
+                    "weight": float(row['lbs']) * 0.453592,  # Convert lbs to kg
+                    "unit": "kg"
+                })
 
         # Load mock data from trucks.json
         with open('./sample_files/sample_uploads/trucks.json', 'r') as f:
