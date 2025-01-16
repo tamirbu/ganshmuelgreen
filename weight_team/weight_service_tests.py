@@ -1,0 +1,136 @@
+import unittest
+import json
+import csv
+from flask import Flask
+from weight_service import app
+
+class WeightServiceTest(unittest.TestCase):
+    """
+    Unit test suite for the WeightService API.
+
+    This suite uses mock data from provided CSV and JSON files to simulate
+    real-world inputs and validate API functionality without relying on
+    a live database. Paths have been updated to align with the specified
+    directory structure.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        """
+        Set up the Flask test client and load mock data from CSV and JSON files.
+        Ensure the file paths match the provided structure.
+        """
+        cls.client = app.test_client()
+        cls.mock_containers = []
+        cls.mock_trucks = []
+
+        # Load mock data from containers1.csv and containers2.csv
+        for file_name in ['./sample_files/sample_uploads/containers1.csv', './sample_files/sample_uploads/containers2.csv']:
+            with open(file_name, 'r') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    cls.mock_containers.append({
+                        "id": row['id'],
+                        "weight": int(row['weight']),
+                        "unit": row['unit']
+                    })
+
+        # Load mock data from trucks.json
+        with open('./sample_files/sample_uploads/trucks.json', 'r') as f:
+            cls.mock_trucks = json.load(f)
+
+    def test_post_weight_in(self):
+        """
+        Test posting a weight record with direction "in" using mock data.
+        """
+        payload = {
+            "direction": "in",
+            "truck": self.mock_trucks[0]['id'],
+            "containers": ",".join([container['id'] for container in self.mock_containers[:2]]),
+            "weight": 1500,
+            "unit": "kg",
+            "produce": "apples",
+            "force": False
+        }
+        response = self.client.post('/weight', json=payload)
+        self.assertEqual(response.status_code, 200)
+        data = response.json
+        self.assertIn("id", data)
+        self.assertEqual(data["truck"], self.mock_trucks[0]['id'])
+        self.assertEqual(data["bruto"], 1500)
+
+    def test_post_weight_out(self):
+        """
+        Test posting a weight record with direction "out" using mock data.
+        """
+        # Simulate a prior "in" request
+        payload_in = {
+            "direction": "in",
+            "truck": self.mock_trucks[1]['id'],
+            "containers": ",".join([container['id'] for container in self.mock_containers[2:4]]),
+            "weight": 1200,
+            "unit": "kg",
+            "produce": "oranges",
+            "force": False
+        }
+        self.client.post('/weight', json=payload_in)
+
+        # Now simulate an "out" request
+        payload_out = {
+            "direction": "out",
+            "truck": self.mock_trucks[1]['id'],
+            "containers": ",".join([container['id'] for container in self.mock_containers[2:4]]),
+            "weight": 1100,
+            "unit": "kg",
+            "force": False
+        }
+        response = self.client.post('/weight', json=payload_out)
+        self.assertEqual(response.status_code, 200)
+        data = response.json
+        self.assertIn("id", data)
+        self.assertEqual(data["truck"], self.mock_trucks[1]['id'])
+        self.assertEqual(data["truckTara"], 1100)
+        self.assertEqual(data["neto"], 100)
+
+    def test_get_weight(self):
+        """
+        Test retrieving all weight records (mock data only).
+        """
+        response = self.client.get('/weight')
+        self.assertEqual(response.status_code, 200)
+        data = response.json
+        self.assertIsInstance(data, list)
+        self.assertGreater(len(data), 0)
+
+    def test_invalid_request(self):
+        """
+        Test handling of invalid request payloads using mock data.
+        """
+        payload = {
+            "direction": "invalid",
+            "truck": self.mock_trucks[0]['id'],
+            "containers": ",".join([container['id'] for container in self.mock_containers[:2]]),
+            "weight": 1500,
+            "unit": "kg",
+            "force": False
+        }
+        response = self.client.post('/weight', json=payload)
+        self.assertEqual(response.status_code, 400)
+        data = response.json
+        self.assertIn("error", data)
+
+    def test_missing_fields(self):
+        """
+        Test handling of requests with missing required fields using mock data.
+        """
+        payload = {
+            "direction": "in",
+            "truck": self.mock_trucks[0]['id']
+        }
+        response = self.client.post('/weight', json=payload)
+        self.assertEqual(response.status_code, 400)
+        data = response.json
+        self.assertIn("error", data)
+
+if __name__ == '__main__':
+    unittest.main()
