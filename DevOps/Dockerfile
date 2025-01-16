@@ -7,6 +7,9 @@ COPY requirements.txt /app/requirements.txt
 
 RUN pip install -r requirements.txt
 
+RUN apk add --no-cache docker
+RUN apk add --no-cache docker-cli
+
 EXPOSE 5000
 
 ENTRYPOINT [ "python", "main.py" ]
