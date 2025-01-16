@@ -2,7 +2,7 @@ import unittest
 import json
 import csv
 from flask import Flask
-from weight_service import app
+from weight_rervice import app
 
 class WeightServiceTest(unittest.TestCase):
     """
