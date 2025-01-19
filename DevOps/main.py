@@ -21,6 +21,7 @@ def send_email(to_email, subject, body):
             print(f"Email sent successfully to {to_email}")
     except Exception as e:
         print(f"Failed to send email: {str(e)}")
+
 @app.route('/webhook', methods=['POST'])
 def webhook():
     data = request.json
@@ -38,6 +39,7 @@ def webhook():
         return "Email sent", 200
     else:
         return "Not a push to tracked branches branch", 200
+
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
 @app.route('/webhook', methods=['POST'])
