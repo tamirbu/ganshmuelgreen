@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 import mysql.connector
 import os
+from openpyxl import load_workbook
 
 app = Flask(__name__)
 
@@ -160,7 +161,6 @@ def get_truck(id):
     except mysql.connector.Error as err:
         # Handle database errors
         return jsonify({"error": str(err)}), 500
-
 
 
 # home page--------------------------------------------------------------------------------------
