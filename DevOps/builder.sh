@@ -1,4 +1,7 @@
+
 #!/bin/sh
+
+
 
 # Check if a branch name is provided
 if [ -z "$1" ]; then
@@ -17,6 +20,7 @@ if [ $? -ne 0 ]; then
 fi
 
 # Pull the latest changes from the specified branch
+
 git clone --single-branch --branch $branch_name https://github.com/tamirbu/ganshmuelgreen.git
 if [ $? -ne 0 ]; then
   echo "Failed to pull branch: $branch_name"
