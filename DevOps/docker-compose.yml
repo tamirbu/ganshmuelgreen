@@ -1,0 +1,21 @@
+services:
+  flask-app:
+    image: python:3.8.20-alpine
+    container_name: flask-container
+    working_dir: /app
+    volumes:
+      - .:/app
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - "8081:5000"
+    expose:
+      - "5000"
+    environment:
+      - FLASK_ENV=development
+    command: >
+      sh -c "
+      pip install -r requirements.txt && 
+      apk add --no-cache docker docker-cli git &&
+      python main.py"
+    volumes:
+      - "./.git:/app/.git"
