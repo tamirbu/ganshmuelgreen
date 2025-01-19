@@ -6,44 +6,51 @@ services:
       context: .
       dockerfile: Dockerfile
     volumes:
-      - ./src/in:/app/in 
+      - ./src/in:/app/in
     ports:
-      - "5000:5000" 
+      - "5000:5000"
     environment:
       - DATABASE_HOST=db
       - DATABASE_PORT=3306
-      - DATABASE_NAME=billdb  # Match the database name in your SQL file
+      - DATABASE_NAME=billdb
       - DATABASE_USER=myuser
       - DATABASE_PASSWORD=mypassword
     depends_on:
       db:
         condition: service_healthy
     healthcheck:
-      # Check the health of the Flask app
       test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
       interval: 10s
       timeout: 5s
       retries: 3
+    networks:
+      - shared_network  # Use the external network
 
   db:
     image: mysql:8.0
     container_name: mysql_db
     ports:
-      - "3306:3306"  
+      - "3306:3306"
     environment:
       MYSQL_ROOT_PASSWORD: rootpassword
-      MYSQL_DATABASE: billdb  # Match the database name in your SQL file
+      MYSQL_DATABASE: billdb
       MYSQL_USER: myuser
       MYSQL_PASSWORD: mypassword
     healthcheck:
-      # Check the health of the MySQL service
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 10s
       timeout: 5s
       retries: 3
     volumes:
-      - mysql_data:/var/lib/mysql 
-      - ./billingdb.sql:/docker-entrypoint-initdb.d/billingdb.sql 
+      - mysql_data:/var/lib/mysql
+      - ./billingdb.sql:/docker-entrypoint-initdb.d/billingdb.sql
+    networks:
+      - shared_network  # Use the external network
 
 volumes:
   mysql_data:
+
+networks:
+  shared_network:
+    external: true  # Define the external network
+
