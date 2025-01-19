@@ -6,7 +6,7 @@ services:
       dockerfile: Dockerfile
     container_name: weight_app
     volumes:
-      - ./src/in:/app/in
+      - ./sample_files/sample_uploads:/app/in 
     ports:
       - "5000:5000"
     environment:
@@ -23,7 +23,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
-
+ 
   mysql:
     image: mysql:8.0
     container_name: mysql_weight_db
@@ -42,10 +42,8 @@ services:
     volumes:
       - mysql_weight_data:/var/lib/mysql
       - ./dump.sql:/docker-entrypoint-initdb.d/dump.sql
-
 volumes:
   mysql_weight_data:
-
 networks:
   shared_network:
     external: true
