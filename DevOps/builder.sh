@@ -22,18 +22,18 @@ fi
 case "$branch_name" in
     "main")
         cd $repo_folder
-        docker-compose -p prod -f main-docker-compose.yml up
+        docker-compose -p prod -f main-docker-compose.yml up --force-recreate
         cd $billing_folder
-        docker-compose -p prod up -d
+        docker-compose -p prod up -d --force-recreate
         cd $weight_folder
-        docker-compose -p prod up -d
+        docker-compose -p prod up -d --force-recreate
         ;;
     "devops")
         echo 'devops is not automatically built and deployed'
         ;;
     "billing")
         cd $billing_folder
-        docker-compose -p test up -d
+        docker-compose -p test up -d --force-recreate
         if [ $? -ne 0 ]; then
             echo "Failed to build Docker image for $branch_name"
             exit 1
@@ -41,7 +41,7 @@ case "$branch_name" in
         ;;
     "weight")
         cd $weight_folder
-        docker-compose -p test up -d
+        docker-compose -p test up -d --force-recreate
         ;;
     *)
         echo "Unknown branch name: $branch_name"
@@ -49,5 +49,6 @@ case "$branch_name" in
         ;;
 esac
 cd $main_folder
+echo "removing $repo_folder..."
 rm -rf $repo_folder
 echo "Script executed successfully!"
