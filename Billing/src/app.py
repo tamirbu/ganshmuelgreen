@@ -53,6 +53,115 @@ def add_provider():
 
     except mysql.connector.Error as err:
         return jsonify({"error": str(err)}), 500
+    
+    
+@app.route("/truck/<id>", methods=["PUT"])
+def update_truck(id):
+    """
+    Updates or creates a truck entry in the database.
+
+    Parameters:
+        id (str): The truck ID provided in the URL.
+        JSON body:
+            - provider_id (int): The provider ID to associate with the truck.
+
+    Returns:
+        JSON response:
+            - On success (200): {"id": truck_id, "provider_id": provider_id}
+            - On missing provider_id in request body (400): {"error": "Missing provider_id"}
+            - On non-existent provider_id (404): {"error": "Provider ID does not exist"}
+            - On server/database error (500): {"error": <error_message>}
+    """
+    # Parse the JSON body of the request
+    data = request.get_json()
+
+    # Validate that provider_id is present in the request body
+    if not data or "provider_id" not in data:
+        return jsonify({"error": "Missing provider_id"}), 400
+
+    provider_id = data["provider_id"]
+
+    try:
+        # Establish a database connection
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Check if the provider exists in the Provider table
+        cursor.execute("SELECT COUNT(*) FROM Provider WHERE id = %s", (provider_id,))
+        provider_exists = cursor.fetchone()[0]
+
+        # If the provider does not exist, return a 404 error
+        if not provider_exists:
+            return jsonify({"error": "Provider ID does not exist"}), 404
+
+        # Check if the truck exists in the Trucks table
+        cursor.execute("SELECT COUNT(*) FROM Trucks WHERE id = %s", (id,))
+        truck_exists = cursor.fetchone()[0]
+
+        if truck_exists:
+            # Update the existing truck's provider_id
+            query = "UPDATE Trucks SET provider_id = %s WHERE id = %s"
+            cursor.execute(query, (provider_id, id))
+        else:
+            # Insert a new truck record
+            query = "INSERT INTO Trucks (id, provider_id) VALUES (%s, %s)"
+            cursor.execute(query, (id, provider_id))
+
+        # Commit the transaction to the database
+        conn.commit()
+
+        # Close the database connection
+        cursor.close()
+        conn.close()
+
+        # Return a success response
+        return jsonify({"id": id, "provider_id": provider_id}), 200
+
+    except mysql.connector.Error as err:
+        # Handle database errors and return an error response
+        return jsonify({"error": str(err)}), 500
+    
+    
+@app.route("/truck/<id>", methods=["GET"])
+def get_truck(id):
+    """
+    Checks if a truck with the given ID exists in the database.
+
+    Parameters:
+        id (str): The truck ID provided in the URL.
+
+    Returns:
+        JSON response:
+            - On success (200): {"message": "Truck exists", "id": truck_id}
+            - On not found (404): {"error": "Truck not found"}
+    """
+    try:
+        # Establish a database connection
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Check if the truck exists in the Trucks table
+        query = "SELECT COUNT(*) FROM Trucks WHERE id = %s"
+        cursor.execute(query, (id,))
+        truck_exists = cursor.fetchone()[0]
+
+        # If the truck exists, return success
+        if truck_exists:
+            cursor.close()
+            conn.close()
+            return jsonify({"message": "Truck exists", "id": id}), 200
+
+        # If the truck does not exist, return not found
+        else:
+            cursor.close()
+            conn.close()
+            return jsonify({"error": "Truck not found"}), 404
+
+    except mysql.connector.Error as err:
+        # Handle database errors
+        return jsonify({"error": str(err)}), 500
+
+
 
 # home page--------------------------------------------------------------------------------------
 @app.route("/")
