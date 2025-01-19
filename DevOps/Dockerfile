@@ -9,6 +9,8 @@ COPY builder.sh /app/builder.sh
 RUN pip install -r requirements.txt
 RUN apk add --no-cache docker
 RUN apk add --no-cache docker-cli
+RUN apk add git
+
 
 VOLUME [ "/app/.git" ]
 
