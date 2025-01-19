@@ -24,7 +24,8 @@ RUN curl -L "https://github.com/docker/compose/releases/download/v${DOCKER_COMPO
 RUN ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose 
 RUN pip install -r requirements.txt 
 RUN chmod +x /usr/local/bin/docker-compose
-RUN chmod +x builder.sh
+RUN chmod +x /app/builder.sh
 RUN apk add git
+RUN docker network create shared_network
 
 ENTRYPOINT [ "python", "main.py" ]
