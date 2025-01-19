@@ -1,7 +1,7 @@
 services:
   flask-app:
     build: .
-    container_name: flask-container
+    container_name: ci-container
     working_dir: /app
     volumes:
       - .:/app

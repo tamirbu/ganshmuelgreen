@@ -7,6 +7,7 @@ WORKDIR /app
 COPY main.py /app/main.py
 COPY requirements.txt /app/requirements.txt
 COPY builder.sh /app/builder.sh
+COPY main-docker-compose.yml /app/main-docker-compose.yml
 
 RUN apk add --no-cache \
       curl \
@@ -17,12 +18,13 @@ RUN apk add --no-cache \
       py3-cffi \
       make \
       gcc \
-      musl-dev && \
-      git && \
-    curl -L "https://github.com/docker/compose/releases/download/v${DOCKER_COMPOSE_VERSION}/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose && \
-    ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose && \
-    pip install -r requirements.txt && \
-    chmod +x /usr/local/bin/docker-compose && \
-    chmod +x builder.sh
+      musl-dev
+
+RUN curl -L "https://github.com/docker/compose/releases/download/v${DOCKER_COMPOSE_VERSION}/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+RUN ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose 
+RUN pip install -r requirements.txt 
+RUN chmod +x /usr/local/bin/docker-compose
+RUN chmod +x builder.sh
+RUN apk add git
 
 ENTRYPOINT [ "python", "main.py" ]
