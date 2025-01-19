@@ -1,4 +1,3 @@
-flask==3.0.2
+Flask==3.1.0
 mysql-connector-python==8.0.33
-pandas
-openpyxl
+openpyxl==3.1.2
