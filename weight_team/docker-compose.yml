@@ -6,8 +6,7 @@ services:
       dockerfile: Dockerfile
     container_name: weight_app
     volumes:
-      - ./src/in:/app/in
-      - ./sample_files:/app/sample_files
+      - ./src/in:/app/in     
     ports:
       - "5000:5000"
     environment:
