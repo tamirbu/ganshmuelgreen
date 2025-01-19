@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 # Check if a branch name is provided
 if [ -z "$1" ]; then
@@ -17,14 +17,14 @@ if [ $? -ne 0 ]; then
 fi
 
 # Pull the latest changes from the specified branch
-git pull origin "$branch_name"
+git clone --single-branch --branch $branch_name https://github.com/tamirbu/ganshmuelgreen.git
 if [ $? -ne 0 ]; then
   echo "Failed to pull branch: $branch_name"
   exit 1
 fi
 
 # Build the Docker image
-docker build . -t "test-img-$branch_name"
+docker compose up -d . -t "test-img-$branch_name"
 if [ $? -ne 0 ]; then
   echo "Failed to build Docker image: test-img-$branch_name"
   exit 1
