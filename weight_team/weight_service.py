@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, jsonify
 from flask_mysqldb import MySQL
 import os
 
@@ -12,6 +12,19 @@ app.config['MYSQL_DB'] = os.environ.get('MYSQL_DATABASE')
 
 # Initialize MySQL
 mysql = MySQL(app)
+
+@app.route('/health', methods=['GET'])
+def health():
+    try:
+        # Try to connect to database and execute simple query
+        cursor = mysql.connection.cursor()
+        cursor.execute('SELECT 1')
+        cursor.close()
+        return "OK", 200
+    except Exception as e:
+        # If database connection fails
+        print(f"Health check failed: {e}")
+        return "Failure", 500
 
 if __name__ == '__main__':
     # Verify database connection
