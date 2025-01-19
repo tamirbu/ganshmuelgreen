@@ -47,15 +47,15 @@ def webhook():
     if jsonBranch and jsonBranch.startswith('refs/heads'):
         branchName = jsonBranch.split('/')[-1]
     else:
-        branchName = None # if 'ref' is not in the expected format or branch does not exist
+        return "Bad request: branch not found", 400
     try:
-        #running bash script with branchName as given arg, check for errors if exit!=0
-        # subprocess.run(['./builder.sh', branchName], check=True)
-        app.logger.info('docker exec host-container /home/ubuntu/GanShmuel/ganshmuelgreen/DevOps/builder.sh')
+        app.logger.info(f"Building: {branchName}")
+        subprocess.run(['./builder.sh', branchName], check=True)
     except subprocess.CalledProcessError as e:
         app.logger.error(f"ERROR: {e}")
-    app.logger.info(f"Building: {branchName}")
-    app.logger.info(str(request))
+        return f'Server Error - cannot build for branch {branchName}', 500
+    
     return jsonify({'message': 'Webhook received'}), 200
+
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0')
