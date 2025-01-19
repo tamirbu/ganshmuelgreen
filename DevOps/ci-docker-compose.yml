@@ -1,0 +1,16 @@
+services:
+  flask-app:
+    build: .
+    container_name: flask-container
+    working_dir: /app
+    volumes:
+      - .:/app
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - "8081:5000"
+    expose:
+      - "5000"
+    command:
+       sh -c "
+       chmod +x builder.sh"
+    

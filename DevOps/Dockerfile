@@ -14,6 +14,4 @@ RUN apk add git
 
 VOLUME [ "/app/.git" ]
 
-EXPOSE 5000
-
 ENTRYPOINT [ "python", "main.py" ]
