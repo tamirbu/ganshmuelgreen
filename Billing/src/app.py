@@ -23,7 +23,7 @@ def get_db_connection():
 # add provider to tabel - post------------------------------------------------------------------------
 @app.route("/provider", methods=["POST"])
 def add_provider():
-    # get the name 
+    # get the name
     data = request.get_json()
 
     if not data or "name" not in data:
@@ -53,8 +53,8 @@ def add_provider():
 
     except mysql.connector.Error as err:
         return jsonify({"error": str(err)}), 500
-    
-    
+
+
 @app.route("/truck/<id>", methods=["PUT"])
 def update_truck(id):
     """
@@ -120,8 +120,8 @@ def update_truck(id):
     except mysql.connector.Error as err:
         # Handle database errors and return an error response
         return jsonify({"error": str(err)}), 500
-    
-    
+
+
 @app.route("/truck/<id>", methods=["GET"])
 def get_truck(id):
     """
@@ -161,7 +161,60 @@ def get_truck(id):
         # Handle database errors
         return jsonify({"error": str(err)}), 500
 
+@app.route("/provider/<int:id>", methods=["PUT"])
+def update_provider(id):
+    conn = None
+    try:
+        # Get JSON data for provider update
+        data = request.get_json()
+        new_name = data.get("name")
+        if new_name is None:
+            return jsonify({"error": "Name is required"}), 400
 
+        # Establish database connection
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Check existing provider by ID
+        cursor.execute("SELECT name FROM Provider WHERE id = %s", (id,))
+        existing_provider = cursor.fetchone()
+
+        if existing_provider:
+            # If the provider exists, update the name
+            cursor.execute("UPDATE Provider SET name = %s WHERE id = %s", (new_name, id))
+            conn.commit()
+            return jsonify({
+                "message": "Provider updated",
+                "id": id,
+                "previous_name": existing_provider[0],
+                "new_name": new_name
+            }), 200  # Return 200 OK for an update
+
+        else:
+            # If the provider doesn't exist, insert a new provider
+            cursor.execute("INSERT INTO Provider (id, name) VALUES (%s, %s)", (id, new_name))
+            conn.commit()
+            return jsonify({
+                "message": "Provider created",
+                "id": id,
+                "name": new_name
+            }), 201  # Return 201 Created for new provider
+
+    except Exception as e:
+        # Handle any errors
+        if conn:
+            conn.rollback()
+        return jsonify({
+            "error": "Operation failed",
+            "details": str(e)
+        }), 500
+
+    finally:
+        # Ensure resources are properly closed
+        if 'cursor' in locals() and cursor:
+            cursor.close()
+        if conn:
+            conn.close()
 
 # home page--------------------------------------------------------------------------------------
 @app.route("/")
