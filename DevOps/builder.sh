@@ -1,9 +1,8 @@
 #!/bin/sh
-main_folder="ganshmuelgreen"
-declare -A branch_to_folder
-branch_to_folder["billing"]="$main_folder/Billing"
-branch_to_folder["weight"]="$main_folder/Weight"
-branch_to_folder["main"]="$main_folder"
+main_folder="/app"
+repo_folder="$main_folder/ganshmuelgreen"
+billing_folder="$repo_folder/Billing"
+weight_folder="$repo_folder/Weight"
 
 # Check if a branch name is provided
 if [ -z "$1" ]; then
@@ -12,7 +11,7 @@ if [ -z "$1" ]; then
 fi
 # Assign the first argument to the branch_name variable
 branch_name=$1
-
+echo "branch is '$branch_name'"
 git clone --single-branch --branch $branch_name https://github.com/tamirbu/ganshmuelgreen.git
 
 if [ $? -ne 0 ]; then
@@ -22,31 +21,33 @@ fi
 
 case "$branch_name" in
     "main")
-        echo 'Branch is main'
-        docker-compose -f main-docker-compose.yml -f $main_folder/Billing/docker-compose.yml -f $main_folder/Weight/docker-compose.yml up
+        cd $repo_folder
+        docker-compose -p prod -f main-docker-compose.yml up
+        cd $billing_folder
+        docker-compose -p prod up -d
+        cd $weight_folder
+        docker-compose -p prod up -d
         ;;
     "devops")
-        echo 'DevOps is not autotically built and deployed'
+        echo 'devops is not automatically built and deployed'
         ;;
     "billing")
-        echo "Branch is Billing"
-        docker-compose -f "$main_folder/Billing/docker-compose.yml" up
+        cd $billing_folder
+        docker-compose -p test up -d
         if [ $? -ne 0 ]; then
-            echo "Failed to build Docker image: test-img-$branch_name"
+            echo "Failed to build Docker image for $branch_name"
             exit 1
         fi
         ;;
     "weight")
-        echo "Branch is Weight"
-        docker compose -f "$main_folder/Weight/docker-compose.yml" up
-        if [ $? -ne 0 ]; then
-            echo "Failed to build Docker image: test-img-$branch_name"
-            exit 1
-        fi
+        cd $weight_folder
+        docker-compose -p test up -d
         ;;
     *)
         echo "Unknown branch name: $branch_name"
         exit 1
         ;;
 esac
+cd $main_folder
+rm -rf $repo_folder
 echo "Script executed successfully!"
