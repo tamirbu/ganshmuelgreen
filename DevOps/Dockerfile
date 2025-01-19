@@ -26,6 +26,6 @@ RUN pip install -r requirements.txt
 RUN chmod +x /usr/local/bin/docker-compose
 RUN chmod +x /app/builder.sh
 RUN apk add git
-RUN docker network create shared_network
+
 
 ENTRYPOINT [ "python", "main.py" ]
