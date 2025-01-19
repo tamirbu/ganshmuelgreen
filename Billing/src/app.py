@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 import mysql.connector
 import os
+import pandas as pd
 
 app = Flask(__name__)
 
@@ -160,7 +161,7 @@ def get_truck(id):
     except mysql.connector.Error as err:
         # Handle database errors
         return jsonify({"error": str(err)}), 500
-
+#aviv
 @app.route("/provider/<int:id>", methods=["PUT"])
 def update_provider(id):
     conn = None
@@ -215,6 +216,35 @@ def update_provider(id):
             cursor.close()
         if conn:
             conn.close()
+#aviv
+@app.route("/rates", methods=["GET"])
+def get_rates():
+    file_path = '/app/in/rates.xlsx'
+
+    # Check if file exists
+    if not os.path.exists(file_path):
+        return jsonify({"error": "File not found"}), 404
+
+    try:
+        # Read Excel file
+        df = pd.read_excel(file_path)
+        # Convert to JSON response
+        rates_data = []
+        for _, row in df.iterrows():
+            rate_entry = {
+                "product": row['Product'],
+                "rate": row['Rate'],
+                "scope": row['Scope']
+            }
+            rates_data.append(rate_entry)
+
+        # Create response with download suggestion header
+        response = jsonify(rates_data)
+        response.headers['Content-Disposition'] = 'inline; filename="rates.json"'
+        return response, 200
+    except Exception as e:
+        print(f"Error: {str(e)}")  # Debug print
+        return jsonify({"error": "Failed to process rates", "details": str(e)}), 500
 
 # home page--------------------------------------------------------------------------------------
 @app.route("/")
