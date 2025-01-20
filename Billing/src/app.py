@@ -463,99 +463,41 @@ def get_truck(id):
         return jsonify({"error": str(err)}), 500
         
 # #aviv
-# @app.route("/rates", methods=["GET"])
-# def get_rates():
-#     file_path = '/app/in/rates.xlsx'
+@app.route("/rates", methods=["GET"])
+def get_rates():
+    file_path = '/app/in/rates.xlsx'
+    # Check if file exists
+    if not os.path.exists(file_path):
+        return jsonify({"error": "File not found"}), 404
 
-#     # Check if file exists
-#     if not os.path.exists(file_path):
-#         return jsonify({"error": "File not found"}), 404
+    try:
+        # Load workbook and get active sheet
+        workbook = load_workbook(file_path)
+        sheet = workbook.active
 
-#     try:
-#         # Read Excel file
-#         df = pd.read_excel(file_path)
-#         # Convert to JSON response
-#         rates_data = []
-#         for _, row in df.iterrows():
-#             rate_entry = {
-#                 "product": row['Product'],
-#                 "rate": row['Rate'],
-#                 "scope": row['Scope']
-#             }
-#             rates_data.append(rate_entry)
+        # Get headers from first row
+        headers = [cell.value for cell in sheet[1]]
 
-#         # Create response with download suggestion header
-#         response = jsonify(rates_data)
-#         response.headers['Content-Disposition'] = 'inline; filename="rates.json"'
-#         return response, 200
-#     except Exception as e:
-#         print(f"Error: {str(e)}")  # Debug print
-#         return jsonify({"error": "Failed to process rates", "details": str(e)}), 500
+        # Convert to JSON response
+        rates_data = []
+        # Start from second row (skip headers)
+        for row in sheet.iter_rows(min_row=2, values_only=True):
+            # Create dictionary using headers and row values
+            rate_entry = {
+                "product": row[headers.index('Product')],
+                "rate": row[headers.index('Rate')],
+                "scope": row[headers.index('Scope')]
+            }
+            rates_data.append(rate_entry)
 
+        # Create response with download suggestion header
+        response = jsonify(rates_data)
+        response.headers['Content-Disposition'] = 'inline; filename="rates.json"'
+        return response, 200
 
-# def get_default_dates(): #Chen
-#     """Returns the default t1 (start of the month) and t2 (current time) as strings."""
-#     now = datetime.datetime.now()
-#     t1 = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-#     t2 = now
-#     return t1.strftime('%Y%m%d%H%M%S'), t2.strftime('%Y%m%d%H%M%S')
-    
-
-# @app.route("/truck/<id>", methods=["GET"])
-# def get_truck(id):
-#     """
-#     Handles GET /truck/<id>?from=t1&to=t2 endpoint.
-
-#     Parameters:
-#         id (str): The truck ID.
-
-#     Query Parameters:
-#         from (str): Start datetime (yyyymmddhhmmss).
-#         to (str): End datetime (yyyymmddhhmmss).
-
-#     Returns:
-#         JSON response with truck details or an error message.
-#     """
-#     # Extract query parameters
-#     t1 = request.args.get("from")
-#     t2 = request.args.get("to")
-
-#     # If t1 or t2 are missing, set default values
-#     if not t1 or not t2:
-#         default_t1, default_t2 = get_default_dates()
-#         t1 = t1 or default_t1
-#         t2 = t2 or default_t2
-
-#     # Validate the truck ID format (example: alphanumeric with dashes)
-#     if not isinstance(id, str) or len(id) > 50:
-#         return jsonify({"error": "Invalid truck ID format"}), 400
-
-#     try:
-#         # Call the external weight_app service
-#         response = requests.get(f"{WEIGHT_APP_URL}{id}", params={"from": t1, "to": t2})
-
-#         # Handle response from weight_app
-#         if response.status_code == 404:
-#             return jsonify({"error": "Truck ID not found"}), 404
-
-#         if response.status_code != 200:
-#             return jsonify({"error": "Failed to fetch data from weight service", "details": response.text}), 500
-
-#         # Parse the response from weight_app
-#         data = response.json()
-
-#         # Transform the data for the truck endpoint
-#         transformed_data = {
-#             "id": data["id"],
-#             "tara": data.get("tara", "na"),
-#             "sessions": data.get("sessions", [])
-#         }
-
-#         return jsonify(transformed_data), 200
-
-#     except requests.exceptions.RequestException as e:
-#         # Handle network or request errors
-#         return jsonify({"error": "Failed to connect to weight service", "details": str(e)}), 500
+    except Exception as e:
+        print(f"Error: {str(e)}")  # Debug print
+        return jsonify({"error": "Failed to process rates", "details": str(e)}), 500
 
 
 # home page--------------------------------------------------------------------------------------
