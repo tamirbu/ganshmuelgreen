@@ -54,20 +54,18 @@ case "$branch_name" in
     "billing"|"weight")
         git clone --single-branch --branch $branch_name https://github.com/tamirbu/ganshmuelgreen.git
         cd $weight_folder
-        docker-compose -p test up -d --force-recreate --env-file .env.test up
+        docker-compose --env-file .env.test up -d
         cd $billing_folder
-        docker-compose -p test up -d --force-recreate --env-file .env.test up
+        docker-compose --env-file .env.test up -d
         # Run E2E tests
         # if success:
             #mailer.py (message to send, gitMail)
         # else:
         #     send failure success to push
-
-        # docker-compose down all test containers
-        cd $weight_folder
-        docker-compose down
         cd $billing_folder
-        docker-compose down
+        docker-compose --env-file .env.test down
+        cd $weight_folder
+        docker-compose --env-file .env.test down
 
         # if [ $? -ne 0 ]; then
         #     echo "Failed to build Docker image for $branch_name"
