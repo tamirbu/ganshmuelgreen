@@ -2,9 +2,14 @@ from flask import Flask, request, jsonify
 import mysql.connector
 import os
 from openpyxl import load_workbook
+import requests
+import datetime
 
 
 app = Flask(__name__)
+
+# # Base URL of the external service
+# WEIGHT_APP_URL = "http://weight_app:5000/item/"
 
 #db connaction-------------------------------------------------------------------------------------
 db_host = os.getenv("DATABASE_HOST", "localhost")
@@ -58,7 +63,7 @@ def add_provider():
 
 
     # return "HELLO"
-    print("Received request to upload rates...")
+    print("Received request to upload ...")
     file_path = "/app/in/rates.xlsx"
     
     if not os.path.exists(file_path):
@@ -486,6 +491,71 @@ def get_truck(id):
 #     except Exception as e:
 #         print(f"Error: {str(e)}")  # Debug print
 #         return jsonify({"error": "Failed to process rates", "details": str(e)}), 500
+
+
+# def get_default_dates(): #Chen
+#     """Returns the default t1 (start of the month) and t2 (current time) as strings."""
+#     now = datetime.datetime.now()
+#     t1 = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+#     t2 = now
+#     return t1.strftime('%Y%m%d%H%M%S'), t2.strftime('%Y%m%d%H%M%S')
+    
+
+# @app.route("/truck/<id>", methods=["GET"])
+# def get_truck(id):
+#     """
+#     Handles GET /truck/<id>?from=t1&to=t2 endpoint.
+
+#     Parameters:
+#         id (str): The truck ID.
+
+#     Query Parameters:
+#         from (str): Start datetime (yyyymmddhhmmss).
+#         to (str): End datetime (yyyymmddhhmmss).
+
+#     Returns:
+#         JSON response with truck details or an error message.
+#     """
+#     # Extract query parameters
+#     t1 = request.args.get("from")
+#     t2 = request.args.get("to")
+
+#     # If t1 or t2 are missing, set default values
+#     if not t1 or not t2:
+#         default_t1, default_t2 = get_default_dates()
+#         t1 = t1 or default_t1
+#         t2 = t2 or default_t2
+
+#     # Validate the truck ID format (example: alphanumeric with dashes)
+#     if not isinstance(id, str) or len(id) > 50:
+#         return jsonify({"error": "Invalid truck ID format"}), 400
+
+#     try:
+#         # Call the external weight_app service
+#         response = requests.get(f"{WEIGHT_APP_URL}{id}", params={"from": t1, "to": t2})
+
+#         # Handle response from weight_app
+#         if response.status_code == 404:
+#             return jsonify({"error": "Truck ID not found"}), 404
+
+#         if response.status_code != 200:
+#             return jsonify({"error": "Failed to fetch data from weight service", "details": response.text}), 500
+
+#         # Parse the response from weight_app
+#         data = response.json()
+
+#         # Transform the data for the truck endpoint
+#         transformed_data = {
+#             "id": data["id"],
+#             "tara": data.get("tara", "na"),
+#             "sessions": data.get("sessions", [])
+#         }
+
+#         return jsonify(transformed_data), 200
+
+#     except requests.exceptions.RequestException as e:
+#         # Handle network or request errors
+#         return jsonify({"error": "Failed to connect to weight service", "details": str(e)}), 500
 
 
 # home page--------------------------------------------------------------------------------------
