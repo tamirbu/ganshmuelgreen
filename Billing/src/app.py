@@ -211,8 +211,90 @@ def upload_rates():
         print(f"Error occurred: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
-# put-------------------------------------------------------------------------------------------------------
+@app.route("/truck", methods=["POST"])
+def register_truck():
+    """
+    Registers a new truck in the system.
+    
+    Expected JSON body:
+    {
+        "id": "license-plate",
+        "provider_id": provider-id
+    }
+    
+    Returns:
+        201: Successfully registered truck
+        400: Missing or invalid parameters
+        404: Provider not found
+        500: Database error
+    """
+    # Get JSON data from request
+    data = request.get_json()
+    
+    # Validate required fields
+    if not data or "id" not in data or "provider_id" not in data:
+        return jsonify({
+            "error": "Missing required fields. Both 'id' and 'provider_id' are required"
+        }), 400
+        
+    truck_id = data["id"]
+    provider_id = data["provider_id"]
+    
+    try:
+        # Establish database connection
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Check if provider exists
+        cursor.execute("SELECT id FROM Provider WHERE id = %s", (provider_id,))
+        provider_exists = cursor.fetchone()
+        
+        if not provider_exists:
+            cursor.close()
+            conn.close()
+            return jsonify({
+                "error": f"Provider with ID {provider_id} does not exist"
+            }), 404
+            
+        # Check if truck already exists
+        cursor.execute("SELECT id FROM Trucks WHERE id = %s", (truck_id,))
+        existing_truck = cursor.fetchone()
+        
+        if existing_truck:
+            cursor.close()
+            conn.close()
+            return jsonify({
+                "error": f"Truck with ID {truck_id} already exists"
+            }), 400
+            
+        # Insert new truck
+        cursor.execute(
+            "INSERT INTO Trucks (id, provider_id) VALUES (%s, %s)",
+            (truck_id, provider_id)
+        )
+        
+        # Commit the transaction
+        conn.commit()
+        
+        # Close database connection
+        cursor.close()
+        conn.close()
+        
+        # Return success response
+        return jsonify({
+            "message": "Truck registered successfully",
+            "id": truck_id,
+            "provider_id": provider_id
+        }), 201
+        
+    except mysql.connector.Error as err:
+        if 'cursor' in locals():
+            cursor.close()
+        if 'conn' in locals():
+            conn.close()
+        return jsonify({"error": str(err)}), 500
 
+# put-------------------------------------------------------------------------------------------------------
 @app.route("/truck/<id>", methods=["PUT"])
 def update_truck(id):
     """
@@ -336,7 +418,6 @@ def update_provider(id):
             conn.close()
 
 # get-------------------------------------------------------------------------------------------------------
-
 @app.route("/truck/<id>", methods=["GET"])
 def get_truck(id):
     """
