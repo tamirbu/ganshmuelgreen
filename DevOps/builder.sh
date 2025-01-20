@@ -9,6 +9,9 @@ if [ -z "$1" ]; then
   echo "Please provide a branch name."
   exit 1
 fi
+
+#The Email of the github user who made a pull request
+gitMail =$2
 # Assign the first argument to the branch_name variable
 branch_name=$1
 echo "branch is '$branch_name'"
@@ -33,11 +36,13 @@ case "$branch_name" in
         cd $weight_folder
         docker compose --env-file .env.test down
         # if success:
+         #mailer.py (message to send, gitMail)
             cd $weight_folder
             docker-compose --env-file .env.prod up -d 
             cd $billing_folder
             docker-compose --env-file .env.prod up -d
         # else:
+        #mailer.py (message to send, gitMail)
             # send mail to pusher + devops
         ;;
     "devops")
@@ -50,7 +55,7 @@ case "$branch_name" in
         docker-compose -p test up -d --force-recreate --env-file .env.test up
         # Run E2E tests
         # if success:
-            # send success mail to pusher
+            #mailer.py (message to send, gitMail)
         # else:
         #     send failure success to push
 
