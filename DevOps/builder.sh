@@ -2,7 +2,7 @@
 main_folder="/app"
 repo_folder="$main_folder/ganshmuelgreen"
 billing_folder="$repo_folder/Billing"
-weight_folder="$repo_folder/Weight"
+weight_folder="$repo_folder/weight_team"
 
 # Check if a branch name is provided
 if [ -z "$1" ]; then
