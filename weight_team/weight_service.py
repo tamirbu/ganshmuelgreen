@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+
 
 from flask import Flask, jsonify, request
 from flask_mysqldb import MySQL
@@ -8,15 +8,6 @@ import csv
 from pathlib import Path
 from typing import Union, List, Tuple, Dict
 from datetime import datetime
-
-=======
-from flask import Flask, jsonify, request
-from flask_mysqldb import MySQL
-from pathlib import Path
-from typing import Union, List, Tuple, Dict
-from datetime import datetime
-import os, uuid, json, csv
->>>>>>> origin/weight
 
 #csv_file_path = "./sample_files/sample_uploads/containers1.csv"
 
@@ -40,17 +31,10 @@ def convert_to_kg(weight: Union[int, float, str], unit: str = 'kg') -> int:
     Returns:
         Weight in kilograms as integer
     """
-    try:
-<<<<<<< HEAD
-        # Try to connect to database and execute simple query
-        cursor = mysql.connection.cursor()
-        cursor.execute('SELECT 1')
-        cursor.close()
-        return "OK", 200
-    except Exception as e:
-        # If database connection fails
-        print(f"Health check failed: {e}")
-        return "Failure", 500
+    weight = float(weight)
+    if unit.lower() == 'lbs':
+        return int(weight * 0.453592)
+    return int(weight)
 
 @app.route('/health', methods=['GET'])
 def health():
@@ -286,14 +270,6 @@ def get_session(id):
     except Exception as e:
         print(f"Database error: {e}")
         return jsonify({"error": "An error occurred while processing the request"}), 500
-=======
-        weight = float(weight)
-        if unit.lower() == 'lbs':
-            return int(weight * 0.453592)
-        return int(weight)
-    except (ValueError, TypeError) as e:
-        raise ValueError(f"Invalid weight value: {weight}")
->>>>>>> origin/weight
 
 def process_csv_file(file_path: Path) -> List[Tuple[str, int]]:
     """
