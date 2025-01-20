@@ -1,5 +1,3 @@
-
-
 from flask import Flask, jsonify, request
 from flask_mysqldb import MySQL
 import os, uuid
@@ -8,8 +6,6 @@ import csv
 from pathlib import Path
 from typing import Union, List, Tuple, Dict
 from datetime import datetime
-
-#csv_file_path = "./sample_files/sample_uploads/containers1.csv"
 
 app = Flask(__name__)
 
@@ -48,21 +44,9 @@ def health():
         # If database connection fails
         print(f"Health check failed: {e}")
         return "Failure", 500
-@app.route('/health', methods=['GET'])
-def health():
-    try:
-        # Try to connect to database and execute simple query
-        cursor = mysql.connection.cursor()
-        cursor.execute('SELECT 1')
-        cursor.close()
-        return "OK", 200
-    except Exception as e:
-        # If database connection fails
-        print(f"Health check failed: {e}")
-        return "Failure", 500
 
-@app.route('/weight', methods=['GET'])
-def get_weight():
+# @app.route('/weight', methods=['GET'])
+# def get_weight():
     # Get query parameters
     from_date = request.args.get('from')
     to_date = request.args.get('to')
@@ -79,9 +63,11 @@ def get_weight():
     params = [from_date, to_date] + filter_param.split(',')
 
     try:
-        cur = mysql.connection.cursor(dictionary=True)
-        cur.execute(query, params)
-        transactions = cur.fetchall()
+        cursor = mysql.connection.cursor()
+        cursor.execute(query, params)
+        mysql.connection.commit()
+        transactions = cursor.fetchall()
+        cursor.close()
 
         result = []
         for t in transactions:
@@ -107,35 +93,77 @@ def get_weight():
         return jsonify({"error": "An error occurred while processing the request"}), 500
 
     finally:
-        if cur:
-            cur.close()
+        if cursor:
+            cursor.close()
 
-@app.route('/unknown', methods=['GET'])
-def get_unknown_containers():
+@app.route('/weight', methods=['GET'])
+def get_weight():
+    # Get query parameters
+    from_date = request.args.get('from')
+    to_date = request.args.get('to')
+    filter_param = request.args.get('filter', 'in,out,none')
+
+    if not from_date or not to_date:
+        return jsonify({"error": "Missing required parameters 'from' and 'to'"}), 400
+
+    # Prepare the SQL query
+    directions = filter_param.split(',')
+    placeholders = ','.join(['%s'] * len(directions))
+    
+    query = f"""
+    SELECT id, direction, bruto, neto, produce, containers, truck
+    FROM Transactions
+    WHERE datetime BETWEEN %s AND %s
+    AND direction IN ({placeholders})
+    """
+    print(f'query{q}')
+    params = [from_date, to_date] + directions
+
     try:
-        cur = mysql.connection.cursor()
-        
-        # Query to find containers with unknown weight
-        query = """
-        SELECT DISTINCT container_id
-        FROM Containers
-        WHERE weight IS NULL OR weight = 0
-        ORDER BY container_id
-        """
-        
-        cur.execute(query)
-        unknown_containers = [row[0] for row in cur.fetchall()]
-        
-        return jsonify(unknown_containers), 200
+        cursor = mysql.connection.cursor(dictionary=True)  # Ensures fetching results as dicts
+        cursor.execute(query, params)
+        transactions = cursor.fetchall()
+
+        result = []
+        for t in transactions:
+            transaction_dict = {
+                "id": t['id'],
+                "direction": t['direction'],
+                "bruto": int(t['bruto']),  # Ensure it's an integer
+                "neto": int(t['neto']) if t['neto'] is not None else "na",
+                "produce": t['produce'],
+                "containers": t['containers'].split(',') if t['containers'] else []
+            }
+            
+            # Handle 'none' direction for containers without a truck
+            if t['direction'] == 'none' and t['truck'] == 'na':
+                transaction_dict["direction"] = "none"
+            
+            result.append(transaction_dict)
+
+        return jsonify(result)
 
     except Exception as e:
         print(f"Database error: {e}")
         return jsonify({"error": "An error occurred while processing the request"}), 500
 
     finally:
-        if cur:
-            cur.close()
+        if 'cursor' in locals() and cursor:
+            cursor.close()
 
+@app.route('/unknown', methods=['GET'])
+def get_unknown_containers():
+        cursor = mysql.connection.cursor()
+        cursor.execute("""
+        SELECT container_id
+        FROM containers_registered
+        WHERE weight IS NULL OR weight = 0
+        """
+        )
+        result = cursor.fetchall()    
+        cursor.close()
+        container_ids = [row[0] for row in result]
+        return jsonify(container_ids), 200
 @app.route('/item/<id>', methods=['GET'])
 def get_item(id):
     from_date = request.args.get('from')
@@ -341,30 +369,12 @@ def process_json_file(file_path: Path) -> List[Tuple[str, int]]:
         raise ValueError(f"Error processing JSON file: {str(e)}")
 
 
-@app.route('/health', methods=['GET'])
-def health_check():
-    """
-    Health check endpoint.
-    Returns "OK" if the database is accessible, otherwise "Failure".
-    """
-    try:
-        with app.app_context():
-            # Check database connection
-            cursor = mysql.connection.cursor()
-            cursor.execute("SELECT 1;")
-            cursor.close()
-        return jsonify(status="OK"), 200
-    except Exception as e:
-        return jsonify(status="Failure", error=str(e)), 500
-
-
 # Helper function to calculate Neto
 def calculate_neto(bruto, truck_tara, container_taras):
     #if any(tara is None for tara in container_taras):
         #return None  # If any container's tara is unknown
     print (bruto, truck_tara, container_taras)
     return bruto - truck_tara - sum(container_taras)
-
 
 # API routes
 @app.route('/weight', methods=['POST'])
@@ -464,7 +474,6 @@ def post_weight():
             }), 200
 
     return jsonify({"error": "Invalid request"}), 400
-
 
 @app.route('/batch-weight', methods=['POST'])
 def batch_weight() -> tuple:
