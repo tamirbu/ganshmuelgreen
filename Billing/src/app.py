@@ -423,7 +423,7 @@ def update_provider(id):
             conn.close()
 
 # get-------------------------------------------------------------------------------------------------------
-@app.route("/truck/<id>", methods=["GET"])
+@app.route("/truckExists/<id>", methods=["GET"])
 def get_truck(id):
     """
     Checks if a truck with the given ID exists in the database.
