@@ -50,7 +50,7 @@
 #     external: true
 # =======
 # >>>>>>> weight
-version: '3.8'
+version: '3.9'
 services:
   weight_service:
     build:
@@ -110,9 +110,9 @@ services:
       - MYSQL_DATABASE=weight
       - MYSQL_USER=weight_user
       - MYSQL_PASSWORD=weight_pass
-    deploy:
-      replicas: ${RUN_TESTS} == 'true' ? 1 : 0
     command: python -m unittest discover -s . -p "*_tests.py"
+    profiles:
+      - ${TEST_PROFILE}
 
 
 volumes:
