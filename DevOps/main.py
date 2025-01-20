@@ -15,7 +15,13 @@ gitUsers = ["tomermaas", "levi3259", "mikoga", "eitanp214", "tamirbu", "ChenCohe
             ]
 
 mail_dict = dict(zip(gitUsers, emails))
-            
+
+try:
+    subprocess.run(['./prodStart.sh'])
+except subprocess.CalledProcessError as e:
+    app.logger.error("Error starting productions")
+    app.logger.error(f"ERROR: {e}")
+
 
 @app.route('/webhook', methods=['POST'])
 def webhook():
