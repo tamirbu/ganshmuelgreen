@@ -1,9 +1,11 @@
 import unittest
 from flask import Flask
 from flask.testing import FlaskClient
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).parent.resolve()))
 from weight_service import app  # Assuming the main app is named weight_service.py
 import json
-from pathlib import Path
 
 
 class TestWeightAPI(unittest.TestCase):
@@ -200,4 +202,10 @@ class TestWeightAPI(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    # Define the output file for the test results
+    output_file = Path("/app/outputs/test_results.log")
+
+    # Run the tests and save results to the file
+    with output_file.open("w") as f:
+        test_runner = unittest.TextTestRunner(stream=f, verbosity=2)
+        unittest.main(testRunner=test_runner, exit=True)

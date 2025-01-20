@@ -6,7 +6,7 @@
 #       dockerfile: Dockerfile
 #     container_name: weight_app
 #     volumes:
-#       - ./sample_files/sample_uploads:/app/in 
+#       - ./sample_files/sample_uploads:/app/in
 #     ports:
 #       - "5000:5000"
 #     environment:
@@ -23,7 +23,7 @@
 #       interval: 10s
 #       timeout: 5s
 #       retries: 3
- 
+
 #   mysql:
 #     image: mysql:8.0
 #     container_name: mysql_weight_db
@@ -58,7 +58,7 @@ services:
       dockerfile: Dockerfile
     container_name: ${PROJECT_NAME}_weight_app
     volumes:
-      - ./src/in:/app/in     
+      - ./src/in:/app/in
     ports:
       - "${APP_PORT_MAPPING}:5000"
     environment:
@@ -104,13 +104,15 @@ services:
     volumes:
       - .:/app
       - ./sample_files/sample_uploads:/app/in
+      - ./outputs:/app/outputs
     environment:
       - MYSQL_HOST=mysql
       - MYSQL_PORT=3306
       - MYSQL_DATABASE=weight
       - MYSQL_USER=weight_user
       - MYSQL_PASSWORD=weight_pass
-    command: python -m unittest discover -s . -p "*_tests.py"
+    command: /bin/sh -c "python -m unittest discover -s /app -p '*_tests.py' > /app/outputs/test_results.log && docker-compose down"
+    restart: "no"
     profiles:
       - ${TEST_PROFILE}
 
