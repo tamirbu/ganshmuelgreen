@@ -6,19 +6,16 @@ app = Flask(__name__)
 
 
 
-emails = ["tomermaas@gmail.com", "cl6724259@gmail.com", "mikoga89@gmail.com", "eitanp214@gmail.com", "tamirbuch@gmail.com",
-          "chencohen812@gmail.com", "Ester.Ovrani@gmail.com", "avivpeten123@gmail.com", "sara.beck.dev@gmail.com", "tomermfeiler@gmail.com"
-          ]
-
-gitUsers = ["tomermaas", "levi3259", "mikoga", "eitanp214", "tamirbu", "ChenCohen123", "EsterOvrani",
-            "aviv-peten", "sariGolombeck", "TomerFeiler"
-            ]
-
-mail_dict = dict(zip(gitUsers, emails))
+mail_dict = {
+    'tomermaas': 'tomermaas@gmail.com', 'levi3259': 'cl6724259@gmail.com', 'mikoga': 'mikoga89@gmail.com',
+    'eitanp214': 'eitanp214@gmail.com', 'tamirbu': 'tamirbuch@gmail.com', 'ChenCohen123': 'chencohen812@gmail.com',
+    'EsterOvrani': 'Ester.Ovrani@gmail.com', 'aviv-peten': 'avivpeten123@gmail.com',
+    'sariGolombeck': 'sara.beck.dev@gmail.com', 'TomerFeiler': 'tomermfeiler@gmail.com'}
 
 try:
     subprocess.run(['./prodStart.sh'])
-except subprocess.CalledProcessError as e:
+except Exception as e:
+# except subprocess.CalledProcessError as e:
     app.logger.error("Error starting productions")
     app.logger.error(f"ERROR: {e}")
 
