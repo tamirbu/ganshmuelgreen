@@ -48,19 +48,7 @@ def health():
         # If database connection fails
         print(f"Health check failed: {e}")
         return "Failure", 500
-@app.route('/health', methods=['GET'])
-def health():
-    try:
-        # Try to connect to database and execute simple query
-        cursor = mysql.connection.cursor()
-        cursor.execute('SELECT 1')
-        cursor.close()
-        return "OK", 200
-    except Exception as e:
-        # If database connection fails
-        print(f"Health check failed: {e}")
-        return "Failure", 500
-
+        
 @app.route('/weight', methods=['GET'])
 def get_weight():
     # Get query parameters
