@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 
 from flask import Flask, jsonify, request
 from flask_mysqldb import MySQL
@@ -8,8 +9,16 @@ from pathlib import Path
 from typing import Union, List, Tuple, Dict
 from datetime import datetime
 
+=======
+from flask import Flask, jsonify, request
+from flask_mysqldb import MySQL
+from pathlib import Path
+from typing import Union, List, Tuple, Dict
+from datetime import datetime
+import os, uuid, json, csv
+>>>>>>> origin/weight
 
-csv_file_path = "./sample_files/sample_uploads/containers1.csv"
+#csv_file_path = "./sample_files/sample_uploads/containers1.csv"
 
 app = Flask(__name__)
 
@@ -32,6 +41,7 @@ def convert_to_kg(weight: Union[int, float, str], unit: str = 'kg') -> int:
         Weight in kilograms as integer
     """
     try:
+<<<<<<< HEAD
         # Try to connect to database and execute simple query
         cursor = mysql.connection.cursor()
         cursor.execute('SELECT 1')
@@ -276,6 +286,14 @@ def get_session(id):
     except Exception as e:
         print(f"Database error: {e}")
         return jsonify({"error": "An error occurred while processing the request"}), 500
+=======
+        weight = float(weight)
+        if unit.lower() == 'lbs':
+            return int(weight * 0.453592)
+        return int(weight)
+    except (ValueError, TypeError) as e:
+        raise ValueError(f"Invalid weight value: {weight}")
+>>>>>>> origin/weight
 
 def process_csv_file(file_path: Path) -> List[Tuple[str, int]]:
     """
@@ -372,29 +390,6 @@ def calculate_neto(bruto, truck_tara, container_taras):
     return bruto - truck_tara - sum(container_taras)
 
 
-# Function to load containers from a CSV file
-def load_containers_from_csv(file_path):
-    try:
-        with open(file_path, mode='r', encoding='utf-8') as file:
-            csv_reader = csv.DictReader(file)
-            for row in csv_reader:
-                container_id = row["id"]
-                if "kg" in row:
-                    weight_kg = float(row["kg"])
-                elif "lbs" in row:
-                    weight_kg = float(row["lbs"]) * 0.453592
-                else:
-                    continue
-                # Insert into database directly
-                cursor = mysql.connection.cursor()
-                cursor.execute("INSERT INTO containers_registered (container_id, weight) VALUES (%s, %s)", (container_id, weight_kg))
-                mysql.connection.commit()
-                cursor.close()
-        print(f"Loaded containers from {file_path}")
-    except Exception as e:
-        print(f"Error loading containers: {e}")
-
-
 # API routes
 @app.route('/weight', methods=['POST'])
 def post_weight():
@@ -461,8 +456,8 @@ def post_weight():
                 SELECT weight FROM containers_registered WHERE container_id IN (%s)
                 """, (",".join(containers_list),))
         container_weights = cursor.fetchall()
-        print(f'container list{container_weights}')
-        neto = calculate_neto(bruto, weight, [cw[0] for cw in container_weights])
+        containers= [cw[0] for cw in container_weights]
+        neto = calculate_neto(bruto, weight,containers)
 
         query = """
                 INSERT INTO transactions (datetime, direction, truck, containers, bruto, truckTara, neto, produce)
@@ -555,11 +550,4 @@ if __name__ == '__main__':
             print("Successfully connected to MySQL database!")
     except Exception as e:
         print(f"Error connecting to MySQL: {e}")
-
-# Load containers from CSV with app context
-    #try:
-        #with app.app_context():  # Ensure we are in the correct context when loading containers
-            #load_containers_from_csv(csv_file_path)
-    #except Exception as e:
-        #print(f"Error loading containers: {e}")
     app.run(debug=True, host='0.0.0.0', port=5000)
