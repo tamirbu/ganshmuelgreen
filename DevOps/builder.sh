@@ -24,16 +24,19 @@ case "$branch_name" in
         # cd $repo_folder
         # docker-compose -p prod -f main-docker-compose.yml up --force-recreate --env-file .env.prod up
         cd $weight_folder
-        docker-compose -p test up -d --force-recreate --env-file .env.test up
+        docker-compose --env-file .env.test up -d
         cd $billing_folder
-        docker-compose -p test up -d --force-recreate --env-file .env.test up
+        docker-compose --env-file .env.test up -d
         # Run E2E tests
-        # docker-compose down all test containers
+        cd $billing_folder
+        docker compose --env-file .env.test down
+        cd $weight_folder
+        docker compose --env-file .env.test down
         # if success:
             cd $weight_folder
-            docker-compose -p prod up -d --force-recreate --env-file .env.prod up
+            docker-compose --env-file .env.prod up -d 
             cd $billing_folder
-            docker-compose -p prod up -d --force-recreate --env-file .env.prod up
+            docker-compose --env-file .env.prod up -d
         # else:
             # send mail to pusher + devops
         ;;
