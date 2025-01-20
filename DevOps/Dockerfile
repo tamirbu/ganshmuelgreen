@@ -4,9 +4,10 @@ ENV DOCKER_COMPOSE_VERSION=2.23.0
 
 WORKDIR /app
 
-COPY main.py /app/main.py
-COPY requirements.txt /app/requirements.txt
-COPY builder.sh /app/builder.sh
+COPY . /app/
+# COPY main.py /app/main.py
+# COPY requirements.txt /app/requirements.txt
+# COPY builder.sh /app/builder.sh
 COPY main-docker-compose.yml /app/main-docker-compose.yml
 
 RUN apk add --no-cache \
@@ -25,6 +26,7 @@ RUN ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
 RUN pip install -r requirements.txt 
 RUN chmod +x /usr/local/bin/docker-compose
 RUN chmod +x /app/builder.sh
+RUN chmod +x /app/prodStart.sh
 RUN apk add git
 
 
