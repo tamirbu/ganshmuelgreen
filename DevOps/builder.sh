@@ -29,6 +29,11 @@ case "$branch_name" in
         docker-compose -p test up -d --force-recreate --env-file .env.test up
         # Run E2E tests
         # docker-compose down all test containers
+        cd $weight_folder
+        docker-compose down
+        cd $billing_folder
+        docker-compose down
+        
         # if success:
             cd $weight_folder
             docker-compose -p prod up -d --force-recreate --env-file .env.prod up
@@ -50,7 +55,12 @@ case "$branch_name" in
             # send success mail to pusher
         # else:
         #     send failure success to push
+
         # docker-compose down all test containers
+        cd $weight_folder
+        docker-compose down
+        cd $billing_folder
+        docker-compose down
 
         # if [ $? -ne 0 ]; then
         #     echo "Failed to build Docker image for $branch_name"
