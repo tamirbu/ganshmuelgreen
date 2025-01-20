@@ -32,9 +32,9 @@ case "$branch_name" in
         docker-compose --env-file .env.test up -d
         # Run E2E tests
         cd $billing_folder
-        docker compose --env-file .env.test down
+        docker-compose --env-file .env.test down
         cd $weight_folder
-        docker compose --env-file .env.test down
+        docker-compose --env-file .env.test down
         # if success:
          #mailer.py (message to send, gitMail)
             cd $weight_folder
