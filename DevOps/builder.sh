@@ -26,6 +26,7 @@ case "$branch_name" in
     "main")
         # cd $repo_folder
         # docker-compose -p prod -f main-docker-compose.yml up --force-recreate --env-file .env.prod up
+        python3 mailer.py "Hello from the webserver" "$gitMail"
         git clone --single-branch --branch $branch_name https://github.com/tamirbu/ganshmuelgreen.git
         cd $weight_folder
         docker-compose --env-file .env.test up -d
@@ -48,6 +49,7 @@ case "$branch_name" in
         ;;
     "devops")
         echo 'devops is not automatically built and deployed'
+        python3 mailer.py "Hello, you pushed into Devops branch", "$gitMail"
         ;;
     "billing"|"weight")
         git clone --single-branch --branch $branch_name https://github.com/tamirbu/ganshmuelgreen.git
