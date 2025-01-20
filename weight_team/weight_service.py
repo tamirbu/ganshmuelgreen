@@ -44,9 +44,9 @@ def health():
         # If database connection fails
         print(f"Health check failed: {e}")
         return "Failure", 500
-
-# @app.route('/weight', methods=['GET'])
-# def get_weight():
+        
+@app.route('/weight', methods=['GET'])
+def get_weight():
     # Get query parameters
     from_date = request.args.get('from')
     to_date = request.args.get('to')
