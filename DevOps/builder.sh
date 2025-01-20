@@ -53,7 +53,12 @@ case "$branch_name" in
             # send success mail to pusher
         # else:
         #     send failure success to push
+
         # docker-compose down all test containers
+        cd $weight_folder
+        docker-compose down
+        cd $billing_folder
+        docker-compose down
 
         # if [ $? -ne 0 ]; then
         #     echo "Failed to build Docker image for $branch_name"
