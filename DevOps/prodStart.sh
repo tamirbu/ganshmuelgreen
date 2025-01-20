@@ -1,6 +1,4 @@
 #!/bin/sh
-
-
 main_folder="/app"
 repo_folder="$main_folder/ganshmuelgreen"
 billing_folder="$repo_folder/Billing"
