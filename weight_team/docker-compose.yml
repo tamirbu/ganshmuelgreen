@@ -95,6 +95,23 @@ services:
     volumes:
       - mysql_weight_data:/var/lib/mysql
       - ./dump.sql:/docker-entrypoint-initdb.d/dump.sql
+  test_runner:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      - weight_service
+    volumes:
+      - .:/app
+      - ./sample_files/sample_uploads:/app/in
+    environment:
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - MYSQL_DATABASE=weight
+      - MYSQL_USER=weight_user
+      - MYSQL_PASSWORD=weight_pass
+    command: python -m unittest discover -s . -p "*_tests.py"
+
 
 volumes:
   mysql_weight_data:
