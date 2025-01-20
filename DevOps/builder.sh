@@ -40,9 +40,9 @@ case "$branch_name" in
         # if success:
          #mailer.py (message to send, gitMail)
             cd $weight_folder
-            docker-compose --env-file .env.prod up -d 
+            docker-compose --env-file .env.prod down && docker-compose --env-file .env.prod up -d 
             cd $billing_folder
-            docker-compose --env-file .env.prod up -d
+            docker-compose --env-file .env.prod down && docker-compose --env-file .env.prod up -d 
         # else:
         #mailer.py (message to send, gitMail)
             # send mail to pusher + devops

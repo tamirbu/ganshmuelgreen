@@ -12,7 +12,7 @@ from email.mime.multipart import MIMEMultipart
 def send_email(message, to_email):
     # Replace with your actual email credentials
     from_email = "ganshmuelgreen1@gmail.com"
-    from_password = "devopsgreen"
+    from_password = "kujy lpfr xqsy tfvz"
 
     # Set up the MIME
     msg = MIMEMultipart()
