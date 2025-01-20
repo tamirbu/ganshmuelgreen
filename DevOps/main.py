@@ -12,12 +12,15 @@ mail_dict = {
     'EsterOvrani': 'Ester.Ovrani@gmail.com', 'aviv-peten': 'avivpeten123@gmail.com',
     'sariGolombeck': 'sara.beck.dev@gmail.com', 'TomerFeiler': 'tomermfeiler@gmail.com'}
 
-try:
-    subprocess.run(['./prodStart.sh'])
-except Exception as e:
-# except subprocess.CalledProcessError as e:
-    app.logger.error("Error starting productions")
-    app.logger.error(f"ERROR: {e}")
+#!!! if a change is made in main.py (which can happen because because of 'git pull') 
+# then the main.py restarts and it restarts up the prod environment.
+# therefore - leave this commented !!! 
+# try:
+#     subprocess.run(['./prodStart.sh'])
+# except Exception as e:
+# # except subprocess.CalledProcessError as e:
+#     app.logger.error("Error starting productions")
+#     app.logger.error(f"ERROR: {e}")
 
 
 @app.route('/webhook', methods=['POST'])
