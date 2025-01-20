@@ -14,4 +14,4 @@ COPY weight_service.py .
 
 EXPOSE 5000
 
-ENTRYPOINT ["python", "weight_service.py"]
+CMD ["python", "weight_service.py"]
