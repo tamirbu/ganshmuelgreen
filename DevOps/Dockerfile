@@ -8,7 +8,7 @@ COPY . /app/
 # COPY main.py /app/main.py
 # COPY requirements.txt /app/requirements.txt
 # COPY builder.sh /app/builder.sh
-COPY main-docker-compose.yml /app/main-docker-compose.yml
+# COPY main-docker-compose.yml /app/main-docker-compose.yml
 
 RUN apk add --no-cache \
       curl \
