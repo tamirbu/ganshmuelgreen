@@ -11,11 +11,11 @@ if [ -z "$1" ]; then
 fi
 
 #The Email of the github user who made a pull request
-gitMail =$2
+gitMail=$2
 # Assign the first argument to the branch_name variable
 branch_name=$1
 echo "branch is '$branch_name'"
-git clone --single-branch --branch $branch_name https://github.com/tamirbu/ganshmuelgreen.git
+
 
 if [ $? -ne 0 ]; then
   echo "Failed to clone branch: $branch_name"
@@ -26,15 +26,17 @@ case "$branch_name" in
     "main")
         # cd $repo_folder
         # docker-compose -p prod -f main-docker-compose.yml up --force-recreate --env-file .env.prod up
+        python3 mailer.py "Hello from the webserver" "$gitMail"
+        git clone --single-branch --branch $branch_name https://github.com/tamirbu/ganshmuelgreen.git
         cd $weight_folder
         docker-compose --env-file .env.test up -d
         cd $billing_folder
         docker-compose --env-file .env.test up -d
         # Run E2E tests
         cd $billing_folder
-        docker compose --env-file .env.test down
+        docker-compose --env-file .env.test down
         cd $weight_folder
-        docker compose --env-file .env.test down
+        docker-compose --env-file .env.test down
         # if success:
          #mailer.py (message to send, gitMail)
             cd $weight_folder
@@ -47,8 +49,10 @@ case "$branch_name" in
         ;;
     "devops")
         echo 'devops is not automatically built and deployed'
+        python3 mailer.py "Hello, you pushed into Devops branch", "$gitMail"
         ;;
     "billing"|"weight")
+        git clone --single-branch --branch $branch_name https://github.com/tamirbu/ganshmuelgreen.git
         cd $weight_folder
         docker-compose -p test up -d --force-recreate --env-file .env.test up
         cd $billing_folder

@@ -24,8 +24,7 @@ def webhook():
     jsonMail = event.get('sender', {}).get('login', 'Unknown user')
     pusher_email = mail_dict.get(jsonMail, 'Unknown Email')
     
-
-
+    
     if jsonBranch and jsonBranch.startswith('refs/heads'):
         branchName = jsonBranch.split('/')[-1]
     else:
