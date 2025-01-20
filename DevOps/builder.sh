@@ -21,27 +21,41 @@ fi
 
 case "$branch_name" in
     "main")
-        cd $repo_folder
-        docker-compose -p prod -f main-docker-compose.yml up --force-recreate
-        cd $billing_folder
-        docker-compose -p prod up -d --force-recreate
+        # cd $repo_folder
+        # docker-compose -p prod -f main-docker-compose.yml up --force-recreate --env-file .env.prod up
         cd $weight_folder
-        docker-compose -p prod up -d --force-recreate
+        docker-compose -p test up -d --force-recreate --env-file .env.test up
+        cd $billing_folder
+        docker-compose -p test up -d --force-recreate --env-file .env.test up
+        # Run E2E tests
+        # docker-compose down all test containers
+        # if success:
+            cd $weight_folder
+            docker-compose -p prod up -d --force-recreate --env-file .env.prod up
+            cd $billing_folder
+            docker-compose -p prod up -d --force-recreate --env-file .env.prod up
+        # else:
+            # send mail to pusher + devops
         ;;
     "devops")
         echo 'devops is not automatically built and deployed'
         ;;
-    "billing")
-        cd $billing_folder
-        docker-compose -p test up -d --force-recreate
-        if [ $? -ne 0 ]; then
-            echo "Failed to build Docker image for $branch_name"
-            exit 1
-        fi
-        ;;
-    "weight")
+    "billing"|"weight")
         cd $weight_folder
-        docker-compose -p test up -d --force-recreate
+        docker-compose -p test up -d --force-recreate --env-file .env.test up
+        cd $billing_folder
+        docker-compose -p test up -d --force-recreate --env-file .env.test up
+        # Run E2E tests
+        # if success:
+            # send success mail to pusher
+        # else:
+        #     send failure success to push
+        # docker-compose down all test containers
+
+        # if [ $? -ne 0 ]; then
+        #     echo "Failed to build Docker image for $branch_name"
+        #     exit 1
+        # fi
         ;;
     *)
         echo "Unknown branch name: $branch_name"
