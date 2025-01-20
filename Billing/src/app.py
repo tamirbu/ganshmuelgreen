@@ -22,7 +22,7 @@ def get_db_connection():
         password=db_password
     )
 
-# add provider to tabel - post------------------------------------------------------------------------
+# post------------------------------------------------------------------------------------------------------
 @app.route("/provider", methods=["POST"])
 def add_provider():
     # get the name
@@ -55,6 +55,163 @@ def add_provider():
 
     except mysql.connector.Error as err:
         return jsonify({"error": str(err)}), 500
+
+
+    # return "HELLO"
+    print("Received request to upload rates...")
+    file_path = "/app/in/rates.xlsx"
+    
+    if not os.path.exists(file_path):
+        print(f"File {file_path} not found")
+        return jsonify({"error": f"File {file_path} not found"}), 404
+
+    try:
+        # Use openpyxl to read the Excel file
+        from openpyxl import load_workbook
+        wb = load_workbook(filename=file_path)
+        ws = wb.active  # Get the active worksheet
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Skip the header row and process data rows
+        rows = list(ws.rows)[1:]  # Skip header row
+        for row in rows:
+            try:
+                # Get values from cells
+                product = str(row[0].value)  # Product column
+                rate = float(row[1].value)   # Rate column
+                scope = str(row[2].value)    # Scope column
+                
+                print(f"Processing row: Product={product}, Rate={rate}, Scope={scope}")
+                
+                if scope.upper() == "ALL":
+                    cursor.execute(
+                        "DELETE FROM Rates WHERE product_id = %s AND (scope IS NULL OR scope = 'ALL')", 
+                        (product,)
+                    )
+                    cursor.execute(
+                        "INSERT INTO Rates (product_id, rate, scope) VALUES (%s, %s, 'ALL')",
+                        (product, rate)
+                    )
+                else:
+                    cursor.execute(
+                        "DELETE FROM Rates WHERE product_id = %s AND scope = %s",
+                        (product, scope)
+                    )
+                    cursor.execute(
+                        "INSERT INTO Rates (product_id, rate, scope) VALUES (%s, %s, %s)",
+                        (product, rate, scope)
+                    )
+                
+                conn.commit()
+                
+            except ValueError as ve:
+                print(f"Value error in row: {ve}")
+                return jsonify({"error": f"Invalid data format: {ve}"}), 400
+            except mysql.connector.Error as me:
+                print(f"Database error: {me}")
+                return jsonify({"error": f"Database error: {me}"}), 500
+
+        cursor.close()
+        conn.close()
+        wb.close()
+        
+        return jsonify({"message": "Rates updated successfully!"}), 200
+
+    except Exception as e:
+        print(f"Error occurred: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/rates", methods=["POST"])
+def upload_rates():
+    # get the file from in folder - inner the container
+    file_path = "/app/in/rates.xlsx"
+    
+    # ckeck if the file exist
+    if not os.path.exists(file_path):
+        print(f"File {file_path} not found")
+        return jsonify({"error": f"File {file_path} not found"}), 404
+
+    try:
+        from openpyxl import load_workbook
+        wb = load_workbook(filename=file_path)
+        ws = wb.active
+        
+        # open the mysql connaction
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # loop on te excel file - by row
+        rows = list(ws.rows)[1:]
+        for row in rows:
+            try:
+                product = str(row[0].value)
+                rate = float(row[1].value)
+                scope = str(row[2].value)
+                
+                #print(f"Processing row: Product={product}, Rate={rate}, Scope={scope}")
+
+                # row scope = provider id               
+                if scope.upper() != "ALL":
+                    # check if the provider exist on the provider table
+                    cursor.execute("SELECT id FROM Provider WHERE id = %s", (scope,))
+                    provider_exists = cursor.fetchone()
+                    # if not return error
+                    if not provider_exists:
+                        print(f"Provider {scope} not found")
+                        return jsonify({
+                            "error": f"Provider with ID {scope} does not exist in Provider table"
+                        }), 404
+
+                # row scope = all
+                if scope.upper() == "ALL":
+                    # delete row where product = product && scope = all
+                    cursor.execute(
+                        "DELETE FROM Rates WHERE product_id = %s AND (scope IS NULL OR scope = 'ALL')", 
+                        (product,)
+                    )
+                    # add row to rate table by the current row informations
+                    cursor.execute(
+                        "INSERT INTO Rates (product_id, rate, scope) VALUES (%s, %s, 'ALL')",
+                        (product, rate)
+                    )
+                # if the provider id in provider table && scope = provider id
+                else:
+                    # delete row where product = product && scope = scope
+                    cursor.execute(
+                        "DELETE FROM Rates WHERE product_id = %s AND scope = %s",
+                        (product, scope)
+                    )
+                   # add row to rate table by the current row informations
+                    cursor.execute(
+                        "INSERT INTO Rates (product_id, rate, scope) VALUES (%s, %s, %s)",
+                        (product, rate, scope)
+                    )
+                # update the changes in the db
+                conn.commit()
+            
+            # handling value row error
+            except ValueError as ve:
+                print(f"Value error in row: {ve}")
+                return jsonify({"error": f"Invalid data format: {ve}"}), 400
+            # handling db error
+            except mysql.connector.Error as me:
+                print(f"Database error: {me}")
+                return jsonify({"error": f"Database error: {me}"}), 500
+
+        # close connaction db
+        cursor.close()
+        conn.close()
+        wb.close()
+        
+        return jsonify({"message": "Rates updated successfully!"}), 200
+    
+    except Exception as e:
+        print(f"Error occurred: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+# put-------------------------------------------------------------------------------------------------------
 
 @app.route("/truck/<id>", methods=["PUT"])
 def update_truck(id):
@@ -122,46 +279,6 @@ def update_truck(id):
         # Handle database errors and return an error response
         return jsonify({"error": str(err)}), 500
 
-
-@app.route("/truck/<id>", methods=["GET"])
-def get_truck(id):
-    """
-    Checks if a truck with the given ID exists in the database.
-
-    Parameters:
-        id (str): The truck ID provided in the URL.
-
-    Returns:
-        JSON response:
-            - On success (200): {"message": "Truck exists", "id": truck_id}
-            - On not found (404): {"error": "Truck not found"}
-    """
-    try:
-        # Establish a database connection
-        conn = get_db_connection()
-        cursor = conn.cursor()
-
-        # Check if the truck exists in the Trucks table
-        query = "SELECT COUNT(*) FROM Trucks WHERE id = %s"
-        cursor.execute(query, (id,))
-        truck_exists = cursor.fetchone()[0]
-
-        # If the truck exists, return success
-        if truck_exists:
-            cursor.close()
-            conn.close()
-            return jsonify({"message": "Truck exists", "id": id}), 200
-
-        # If the truck does not exist, return not found
-        else:
-            cursor.close()
-            conn.close()
-            return jsonify({"error": "Truck not found"}), 404
-
-    except mysql.connector.Error as err:
-        # Handle database errors
-        return jsonify({"error": str(err)}), 500
-        
 #aviv
 @app.route("/provider/<int:id>", methods=["PUT"])
 def update_provider(id):
@@ -217,6 +334,48 @@ def update_provider(id):
             cursor.close()
         if conn:
             conn.close()
+
+# get-------------------------------------------------------------------------------------------------------
+
+@app.route("/truck/<id>", methods=["GET"])
+def get_truck(id):
+    """
+    Checks if a truck with the given ID exists in the database.
+
+    Parameters:
+        id (str): The truck ID provided in the URL.
+
+    Returns:
+        JSON response:
+            - On success (200): {"message": "Truck exists", "id": truck_id}
+            - On not found (404): {"error": "Truck not found"}
+    """
+    try:
+        # Establish a database connection
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Check if the truck exists in the Trucks table
+        query = "SELECT COUNT(*) FROM Trucks WHERE id = %s"
+        cursor.execute(query, (id,))
+        truck_exists = cursor.fetchone()[0]
+
+        # If the truck exists, return success
+        if truck_exists:
+            cursor.close()
+            conn.close()
+            return jsonify({"message": "Truck exists", "id": id}), 200
+
+        # If the truck does not exist, return not found
+        else:
+            cursor.close()
+            conn.close()
+            return jsonify({"error": "Truck not found"}), 404
+
+    except mysql.connector.Error as err:
+        # Handle database errors
+        return jsonify({"error": str(err)}), 500
+        
 # #aviv
 # @app.route("/rates", methods=["GET"])
 # def get_rates():
