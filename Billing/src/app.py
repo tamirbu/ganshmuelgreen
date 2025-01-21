@@ -503,7 +503,7 @@ def get_rates():
 
 def get_default_dates():
     """Returns the default t1 (start of the month) and t2 (current time) as strings."""
-    now = datetime.datetime.now()
+    now = datetime.now()
     t1 = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     t2 = now
     return t1.strftime('%Y%m%d%H%M%S'), t2.strftime('%Y%m%d%H%M%S')
@@ -532,6 +532,14 @@ def get_truck(id):
         default_t1, default_t2 = get_default_dates()
         t1 = t1 or default_t1
         t2 = t2 or default_t2
+        print(f"Using default dates: from={t1}, to={t2}")
+
+    # Prepare query parameters for the external request
+    params = {}
+    if t1:
+        params["from"] = t1
+    if t2:
+        params["to"] = t2
 
     # Validate the truck ID format (example: alphanumeric with dashes)
     if not isinstance(id, str) or len(id) > 50:
@@ -539,7 +547,7 @@ def get_truck(id):
 
     try:
         # Call the external weight_app service
-        response = requests.get(f"{WEIGHT_APP_URL}/item/{id}", params={"from": t1, "to": t2})
+        response = requests.get(f"{WEIGHT_APP_URL}/item/{id}", params=params)
 
         # Handle response from weight_app
         if response.status_code == 404:
@@ -562,101 +570,103 @@ def get_truck(id):
 
     except requests.exceptions.RequestException as e:
         # Handle network or request errors
+        print(f"Failed to connect to weight service: {e}")
         return jsonify({"error": "Failed to connect to weight service", "details": str(e)}), 500
 
-# @app.route("/bill/<id>", methods=["GET"])
-# def get_bill(id):
-#     """
-#     Get billing information for a provider within a specified time range.
-#     """
-#     try:
-#         # Parse date parameters
-#         t1 = request.args.get("from")
-#         t2 = request.args.get("to")
-#         # Set default dates if not provided
-#         now = datetime.now()
-#         if not t2:
-#             t2 = now.strftime("%Y%m%d%H%M%S")
-#         if not t1:
-#             t1 = now.replace(day=1, hour=0, minute=0, second=0).strftime("%Y%m%d%H%M%S")
-#         # Get provider information
-#         conn = get_db_connection()
-#         cursor = conn.cursor(dictionary=True)
-#         # Get provider details
-#         cursor.execute("SELECT id, name FROM Provider WHERE id = %s", (id,))
-#         provider = cursor.fetchone()
-#         if not provider:
-#             return jsonify({"error": f"Provider {id} not found"}), 404
-#         # Get all trucks for this provider
-#         cursor.execute("SELECT id FROM Trucks WHERE provider_id = %s", (id,))
-#         trucks = [truck['id'] for truck in cursor.fetchall()]
-#         # Get rates for this provider
-#         cursor.execute("""
-#             SELECT product_id, rate, scope
-#             FROM Rates
-#             WHERE scope = %s OR scope = 'ALL'
-#             ORDER BY scope DESC
-#         """, (id,))
-#         rates = cursor.fetchall()
-#         # Create rates lookup dictionary
-#         rates_lookup = {}
-#         for rate in rates:
-#             if rate['product_id'] not in rates_lookup:
-#                 rates_lookup[rate['product_id']] = rate['rate']
-#         cursor.close()
-#         conn.close()
-#         # Get sessions from weight service
-#         try:
-#             weight_response = requests.get(
-#                 f"{WEIGHT_APP_URL}/weight",
-#                 params={"from": t1, "to": t2},
-#                 timeout=5
-#             )
-#             weight_response.raise_for_status()
-#             sessions = weight_response.json()
-#         except requests.RequestException as e:
-#             return jsonify({"error": f"Failed to fetch data from weight service: {str(e)} ----- { t1,  t2}"}), 503
-#         # Process sessions and calculate billing
-#         products: Dict[str, Dict] = {}
-#         session_count = 0
-#         for session in sessions:
-#             # Only consider 'out' sessions with trucks belonging to this provider
-#             if (session.get('direction') == 'out' and
-#                 session.get('truck') in trucks and
-#                 session.get('produce') != 'na'):
-#                 session_count += 1
-#                 produce = session['produce']
-#                 if produce not in products:
-#                     products[produce] = {
-#                         "product": produce,
-#                         "count": 0,
-#                         "amount": 0,
-#                         "rate": rates_lookup.get(produce, 0),
-#                         "pay": 0
-#                     }
-#                 products[produce]["count"] += 1
-#                 # Get neto weight from session details
-#                 if session.get('neto') and session['neto'] != 'na':
-#                     amount = session['neto']
-#                     products[produce]["amount"] += amount
-#                     # Calculate payment in agorot (1 shekel = 100 agorot)
-#                     products[produce]["pay"] += (amount * rates_lookup.get(produce, 0))
-#         # Calculate total payment
-#         total = sum(p["pay"] for p in products.values())
-#         response = {
-#             "id": str(provider["id"]),
-#             "name": provider["name"],
-#             "from": t1,
-#             "to": t2,
-#             "truckCount": len(trucks),
-#             "sessionCount": session_count,
-#             "products": list(products.values()),
-#             "total": total
-#         }
-#         return jsonify(response), 200
-#     except Exception as e:
-#         print(f"Error generating bill: {e}")
-#         return jsonify({"error": "Internal server error", "details": str(e)}), 500
+
+@app.route("/bill/<id>", methods=["GET"])
+def get_bill(id):
+    """
+    Get billing information for a provider within a specified time range.
+    """
+    try:
+        # Parse date parameters
+        t1 = request.args.get("from")
+        t2 = request.args.get("to")
+        # Set default dates if not provided
+        now = datetime.now()
+        if not t2:
+            t2 = now.strftime("%Y%m%d%H%M%S")
+        if not t1:
+            t1 = now.replace(day=1, hour=0, minute=0, second=0).strftime("%Y%m%d%H%M%S")
+        # Get provider information
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        # Get provider details
+        cursor.execute("SELECT id, name FROM Provider WHERE id = %s", (id,))
+        provider = cursor.fetchone()
+        if not provider:
+            return jsonify({"error": f"Provider {id} not found"}), 404
+        # Get all trucks for this provider
+        cursor.execute("SELECT id FROM Trucks WHERE provider_id = %s", (id,))
+        trucks = [truck['id'] for truck in cursor.fetchall()]
+        # Get rates for this provider
+        cursor.execute("""
+            SELECT product_id, rate, scope
+            FROM Rates
+            WHERE scope = %s OR scope = 'ALL'
+            ORDER BY scope DESC
+        """, (id,))
+        rates = cursor.fetchall()
+        # Create rates lookup dictionary
+        rates_lookup = {}
+        for rate in rates:
+            if rate['product_id'] not in rates_lookup:
+                rates_lookup[rate['product_id']] = rate['rate']
+        cursor.close()
+        conn.close()
+        # Get sessions from weight service
+        try:
+            weight_response = requests.get(
+                f"{WEIGHT_APP_URL}/weight",
+                params={"from": t1, "to": t2},
+                timeout=5
+            )
+            weight_response.raise_for_status()
+            sessions = weight_response.json()
+        except requests.RequestException as e:
+            return jsonify({"error": f"Failed to fetch data from weight service: {str(e)} ----- { t1,  t2}"}), 503
+        # Process sessions and calculate billing
+        products: Dict[str, Dict] = {}
+        session_count = 0
+        for session in sessions:
+            # Only consider 'out' sessions with trucks belonging to this provider
+            if (session.get('direction') == 'out' and
+                session.get('truck') in trucks and
+                session.get('produce') != 'na'):
+                session_count += 1
+                produce = session['produce']
+                if produce not in products:
+                    products[produce] = {
+                        "product": produce,
+                        "count": 0,
+                        "amount": 0,
+                        "rate": rates_lookup.get(produce, 0),
+                        "pay": 0
+                    }
+                products[produce]["count"] += 1
+                # Get neto weight from session details
+                if session.get('neto') and session['neto'] != 'na':
+                    amount = session['neto']
+                    products[produce]["amount"] += amount
+                    # Calculate payment in agorot (1 shekel = 100 agorot)
+                    products[produce]["pay"] += (amount * rates_lookup.get(produce, 0))
+        # Calculate total payment
+        total = sum(p["pay"] for p in products.values())
+        response = {
+            "id": str(provider["id"]),
+            "name": provider["name"],
+            "from": t1,
+            "to": t2,
+            "truckCount": len(trucks),
+            "sessionCount": session_count,
+            "products": list(products.values()),
+            "total": total
+        }
+        return jsonify(response), 200
+    except Exception as e:
+        print(f"Error generating bill: {e}")
+        return jsonify({"error": "Internal server error", "details": str(e)}), 500
 
 
 # home page--------------------------------------------------------------------------------------
