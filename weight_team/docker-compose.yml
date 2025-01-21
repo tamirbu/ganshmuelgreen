@@ -75,6 +75,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
+    networks:
+      - shared_network
 
   mysql:
     image: mysql:8.0
@@ -95,6 +97,9 @@ services:
     volumes:
       - mysql_weight_data:/var/lib/mysql
       - ./dump.sql:/docker-entrypoint-initdb.d/dump.sql
+    networks:
+    - shared_network
+    
   test_runner:
     build:
       context: .
@@ -115,7 +120,13 @@ services:
     restart: "no"
     profiles:
       - ${TEST_PROFILE}
+    networks:
+      - shared_network
 
 
 volumes:
   mysql_weight_data:
+
+networks:
+  shared_network:
+    external: true

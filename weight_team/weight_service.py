@@ -1,5 +1,3 @@
-
-
 from flask import Flask, jsonify, request
 from flask_mysqldb import MySQL
 import os, uuid
@@ -8,8 +6,6 @@ import csv
 from pathlib import Path
 from typing import Union, List, Tuple, Dict
 from datetime import datetime
-
-#csv_file_path = "./sample_files/sample_uploads/containers1.csv"
 
 app = Flask(__name__)
 
@@ -38,226 +34,204 @@ def convert_to_kg(weight: Union[int, float, str], unit: str = 'kg') -> int:
 
 @app.route('/health', methods=['GET'])
 def health():
-    try:
-        # Try to connect to database and execute simple query
-        cursor = mysql.connection.cursor()
-        cursor.execute('SELECT 1')
-        cursor.close()
-        return "OK", 200
-    except Exception as e:
-        # If database connection fails
-        print(f"Health check failed: {e}")
-        return "Failure", 500
+    return "OK", 200
         
+
 @app.route('/weight', methods=['GET'])
-def get_weight():
-    # Get query parameters
-    from_date = request.args.get('from')
-    to_date = request.args.get('to')
-    filter_param = request.args.get('filter', 'in,out,none')
-
-    # Prepare the SQL query
-    query = """
-    SELECT id, direction, bruto, neto, produce, containers, truck
-    FROM Transactions
-    WHERE datetime BETWEEN %s AND %s
-    AND direction IN ({})
-    """.format(','.join(['%s'] * len(filter_param.split(','))))
-
-    params = [from_date, to_date] + filter_param.split(',')
-
+def get_weights():
     try:
-        cur = mysql.connection.cursor(dictionary=True)
-        cur.execute(query, params)
-        transactions = cur.fetchall()
+        t1 = request.args.get('from', datetime.now().strftime('%Y%m%d') + "000000")
+        t2 = request.args.get('to', datetime.now().strftime('%Y%m%d%H%M%S'))
+        f = request.args.get('filter', 'in,out,none').split(',')
 
-        result = []
-        for t in transactions:
-            transaction_dict = {
-                "id": t['id'],
-                "direction": t['direction'],
-                "bruto": int(t['bruto']),  # Ensure it's an integer
-                "neto": int(t['neto']) if t['neto'] is not None else "na",
-                "produce": t['produce'],
-                "containers": t['containers'].split(',') if t['containers'] else []
-            }
-            
-            # Handle 'none' direction for containers without a truck
-            if t['direction'] == 'none' and t['truck'] == 'na':
-                transaction_dict["direction"] = "none"
-            
-            result.append(transaction_dict)
+        try:
+            t1_formatted = datetime.strptime(t1, '%Y%m%d%H%M%S').strftime('%Y-%m-%d %H:%M:%S')
+            t2_formatted = datetime.strptime(t2, '%Y%m%d%H%M%S').strftime('%Y-%m-%d %H:%M:%S')
+        except ValueError as ve:
+            return jsonify({"error": "Invalid date format. Expected format: YYYYMMDDHHMMSS"}), 400
 
-        return jsonify(result)
+        if not f or all(not direction for direction in f):
+            return jsonify({"error": "Filter parameter cannot be empty"}), 400
+
+        cursor = mysql.connection.cursor()
+        query = f"""
+            SELECT id, direction, bruto, neto, produce, containers
+            FROM transactions
+            WHERE datetime BETWEEN %s AND %s
+              AND direction IN ({','.join(['%s'] * len(f))})
+        """
+        cursor.execute(query, [t1_formatted, t2_formatted, *f])
+        results = cursor.fetchall()
+        cursor.close()
+
+        output = []
+        for row in results:
+            containers = row[5].split(',') if row[5] else [] 
+            neto = row[3] if row[3] is not None else "na"
+            output.append({
+                "id": row[0],
+                "direction": row[1],
+                "bruto": row[2],
+                "neto": neto,
+                "produce": row[4],
+                "containers": containers
+            })
+
+        return jsonify(output), 200
 
     except Exception as e:
-        print(f"Database error: {e}")
-        return jsonify({"error": "An error occurred while processing the request"}), 500
-
-    finally:
-        if cur:
-            cur.close()
+        return jsonify({"error": f"An unexpected error occurred: {str(e)}"}), 500
 
 @app.route('/unknown', methods=['GET'])
 def get_unknown_containers():
-    try:
-        cur = mysql.connection.cursor()
-        
-        # Query to find containers with unknown weight
-        query = """
-        SELECT DISTINCT container_id
-        FROM Containers
+        cursor = mysql.connection.cursor()
+        cursor.execute("""
+        SELECT container_id
+        FROM containers_registered
         WHERE weight IS NULL OR weight = 0
-        ORDER BY container_id
         """
-        
-        cur.execute(query)
-        unknown_containers = [row[0] for row in cur.fetchall()]
-        
-        return jsonify(unknown_containers), 200
-
-    except Exception as e:
-        print(f"Database error: {e}")
-        return jsonify({"error": "An error occurred while processing the request"}), 500
-
-    finally:
-        if cur:
-            cur.close()
-
+        )
+        result = cursor.fetchall()    
+        cursor.close()
+        container_ids = [row[0] for row in result]
+        return jsonify(container_ids), 200
 @app.route('/item/<id>', methods=['GET'])
 def get_item(id):
-    from_date = request.args.get('from')
-    to_date = request.args.get('to')
-    tz = pytz.timezone('Israel')
-    now = datetime.now(tz)
-
-    def parse_date_with_time(date_str):
-        if date_str:
-            if len(date_str) != 14:  # yyyymmddhhmmss should be 14 characters
-                raise ValueError("Invalid date format. Use yyyymmddhhmmss.")
-            try:
-                return tz.localize(datetime.strptime(date_str, '%Y%m%d%H%M%S'))
-            except ValueError:
-                raise ValueError("Invalid date format. Use yyyymmddhhmmss.")
-        return None
-
-    # Parse from_date
-    if from_date:
-        from_date = parse_date_with_time(from_date)
-        if from_date is None:
-            return jsonify({"error": "from_date must include time when provided."}), 400
-    else:
-        from_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-
-    # Parse to_date
-    if to_date:
-        to_date = parse_date_with_time(to_date)
-        if to_date is None:
-            return jsonify({"error": "to_date must include time when provided."}), 400
-    else:
-        to_date = now
-
-    # Check if to_date is earlier than from_date
-    if to_date < from_date:
-        return jsonify({"error": "to_date cannot be earlier than from_date."}), 400
-
+    """Get information about a specific truck or container"""
+    cursor = None
     try:
-        # Check if the item is a truck or a container
-        cur = mysql.connection.cursor(dictionary=True)
-        cur.execute("SELECT id FROM Trucks WHERE id = %s", (id,))
-        is_truck = cur.fetchone() is not None
-        cur.close()
-
-        if is_truck:
-            # Get the last known tara for truck
-            cur = mysql.connection.cursor(dictionary=True)
-            cur.execute("""
-                SELECT truckTara as tara
-                FROM Transactions
-                WHERE truck = %s AND truckTara IS NOT NULL
-                ORDER BY datetime DESC
-                LIMIT 1
-            """, (id,))
-            tara_result = cur.fetchone()
-            cur.close()
-            tara = tara_result['tara'] if tara_result else "na"
-
-            # Get sessions for truck
-            cur = mysql.connection.cursor(dictionary=True)
-            cur.execute("""
-                SELECT id
-                FROM Transactions
-                WHERE truck = %s AND datetime BETWEEN %s AND %s
-                ORDER BY datetime
-            """, (id, from_date, to_date))
-            sessions = [row['id'] for row in cur.fetchall()]
-            cur.close()
-        else:
-            # Check if it's a container
-            cur = mysql.connection.cursor(dictionary=True)
-            cur.execute("SELECT weight as tara FROM Containers WHERE container_id = %s", (id,))
-            tara_result = cur.fetchone()
-            cur.close()
+        # Get date range parameters with defaults
+        from_date = request.args.get('from')
+        to_date = request.args.get('to')
+        
+        if not from_date:  
+            from_date = datetime.now().replace(day=1, hour=0, minute=0, second=0).strftime('%Y%m%d%H%M%S')
+        if not to_date:
+            to_date = datetime.now().strftime('%Y%m%d%H%M%S')
+        
+        try:
+            # Validate and convert dates  
+            from_datetime = datetime.strptime(from_date, '%Y%m%d%H%M%S') 
+            to_datetime = datetime.strptime(to_date, '%Y%m%d%H%M%S')
             
-            if tara_result is None:
+            if to_datetime < from_datetime:
+                return jsonify({"error": "to_date cannot be earlier than from_date"}), 400
+                
+            from_date = from_datetime.strftime('%Y-%m-%d %H:%M:%S')
+            to_date = to_datetime.strftime('%Y-%m-%d %H:%M:%S')
+            
+        except ValueError as e:
+            return jsonify({"error": "Invalid date format. Use YYYYMMDDhhmmss"}), 400
+
+        # Create cursor after date validation
+        cursor = mysql.connection.cursor()
+        
+        # First check if id exists as a container
+        cursor.execute("""
+            SELECT weight as tara 
+            FROM containers_registered 
+            WHERE container_id = %s
+        """, (id,))
+        container_result = cursor.fetchone()
+        
+        if container_result:
+            # Handle container case
+            tara = container_result[0] if container_result[0] is not None else "na" 
+            
+            # Get container's sessions using FIND_IN_SET or LIKE
+            cursor.execute("""
+                SELECT id 
+                FROM transactions 
+                WHERE (FIND_IN_SET(%s, containers) > 0
+                    OR containers = %s
+                    OR containers LIKE %s
+                    OR containers LIKE %s  
+                    OR containers LIKE %s)
+                AND datetime BETWEEN %s AND %s
+                ORDER BY datetime  
+            """, (id, id, f"{id},%", f"%,{id},%", f"%,{id}", from_date, to_date))
+                
+        else:
+            # Check if exists as a truck
+            cursor.execute("""
+                SELECT DISTINCT truck 
+                FROM transactions 
+                WHERE truck = %s
+                LIMIT 1
+            """, (id,))  
+            truck_exists = cursor.fetchone()
+            
+            if not truck_exists:
                 return jsonify({"error": "Item not found"}), 404
             
-            tara = tara_result['tara']
-
-            # Get sessions for container
-            cur = mysql.connection.cursor(dictionary=True)
-            cur.execute("""
-                SELECT id
-                FROM Transactions
-                WHERE containers LIKE %s AND datetime BETWEEN %s AND %s
+            # Get truck's last known tara  
+            cursor.execute("""
+                SELECT truckTara as tara 
+                FROM transactions 
+                WHERE truck = %s 
+                AND truckTara IS NOT NULL 
+                ORDER BY datetime DESC 
+                LIMIT 1
+            """, (id,))
+            tara_result = cursor.fetchone()
+            tara = tara_result[0] if tara_result and tara_result[0] is not None else "na"
+            
+            # Get truck's sessions
+            cursor.execute("""
+                SELECT id 
+                FROM transactions 
+                WHERE truck = %s 
+                AND datetime BETWEEN %s AND %s 
                 ORDER BY datetime
-            """, (f'%{id}%', from_date, to_date))
-            sessions = [row['id'] for row in cur.fetchall()]
-            cur.close()
-
-        return jsonify({
+            """, (id, from_date, to_date))
+        
+        sessions = [str(row[0]) for row in cursor.fetchall()]
+        
+        response = {
             "id": id,
             "tara": tara,
             "sessions": sessions
-        })
-
+        }
+        
+        return jsonify(response), 200
+        
     except Exception as e:
-        print(f"Database error: {e}")
+        print(f"Detailed error in get_item: {str(e)}")  # More detailed error logging
+        return jsonify({"error": "An error occurred while processing the request"}), 500
+    finally:
+        if cursor:
+            cursor.close()
+
 
 @app.route('/session/<id>', methods=['GET'])
 def get_session(id):
     try:
-        # Query the database for the session
-        cur = mysql.connection.cursor(dictionary=True)
-        cur.execute("""
-            SELECT id, truck, bruto, direction, truckTara, neto
-            FROM Transactions
-            WHERE id = %s
-        """, (id,))
-        
-        session = cur.fetchone()
-        cur.close()
-        
+        cursor= mysql.connection.cursor()
+        cursor.execute("SELECT * FROM transactions WHERE id = %s", (id,))
+        session = cursor.fetchone()
         if not session:
             return jsonify({"error": "Session not found"}), 404
         
-        # Prepare the response
-        response = {
-            "id": session['id'],
-            "truck": session['truck'] if session['truck'] else "na",
-            "bruto": session['bruto']
-        }
-        
-        # Add OUT-specific fields if the direction is 'out'
-        if session['direction'] == 'out':
-            response["truckTara"] = session['truckTara']
-            response["neto"] = session['neto'] if session['neto'] is not None else "na"
-        
-        return jsonify(response)
+        column_names = [desc[0] for desc in cursor.description]
+        session_dict = dict(zip(column_names, session))
 
+        response = {
+            "id": session_dict["id"],
+            "truck": session_dict["truck"] if session_dict["truck"] else "na",
+            "bruto": session_dict["bruto"],
+        }
+
+        if session_dict["direction"] == "out":
+            response["truckTara"] = session_dict["truckTara"]
+            if session_dict["neto"] =="None":
+               response["neto"] = "na"
+            else:   
+               response["neto"] = session_dict["neto"]
+
+        return jsonify(response),200
     except Exception as e:
-        print(f"Database error: {e}")
-        return jsonify({"error": "An error occurred while processing the request"}), 500
+        print(f"Error: {e}")
+        return jsonify({"error": "Internal server error"}), 500
 
 def process_csv_file(file_path: Path) -> List[Tuple[str, int]]:
     """
@@ -328,31 +302,12 @@ def process_json_file(file_path: Path) -> List[Tuple[str, int]]:
     except Exception as e:
         raise ValueError(f"Error processing JSON file: {str(e)}")
 
-
-@app.route('/health', methods=['GET'])
-def health_check():
-    """
-    Health check endpoint.
-    Returns "OK" if the database is accessible, otherwise "Failure".
-    """
-    try:
-        with app.app_context():
-            # Check database connection
-            cursor = mysql.connection.cursor()
-            cursor.execute("SELECT 1;")
-            cursor.close()
-        return jsonify(status="OK"), 200
-    except Exception as e:
-        return jsonify(status="Failure", error=str(e)), 500
-
-
 # Helper function to calculate Neto
 def calculate_neto(bruto, truck_tara, container_taras):
-    #if any(tara is None for tara in container_taras):
-        #return None  # If any container's tara is unknown
+    if any(tara is None for tara in container_taras):
+        return None  # If any container's tara is unknown
     print (bruto, truck_tara, container_taras)
     return bruto - truck_tara - sum(container_taras)
-
 
 # API routes
 @app.route('/weight', methods=['POST'])
@@ -453,7 +408,6 @@ def post_weight():
 
     return jsonify({"error": "Invalid request"}), 400
 
-
 @app.route('/batch-weight', methods=['POST'])
 def batch_weight() -> tuple:
     """
@@ -463,7 +417,7 @@ def batch_weight() -> tuple:
     try:
         # Validate request
         if 'file' not in request.form:
-            return jsonify({"error": "No file specified"}), 400
+            return jsonify({"error": "No file specified"}), 404
             
         filename = request.form['file']
         file_path = Path('/app/in') / filename
@@ -479,7 +433,7 @@ def batch_weight() -> tuple:
         elif ext == '.csv':
             records = process_csv_file(file_path)
         else:
-            return jsonify({"error": "Unsupported file format"}), 400
+            return jsonify({"error": "Unsupported file format"}), 404
 
         # Update database
         cursor = mysql.connection.cursor()
