@@ -27,9 +27,9 @@ docker_compose_build_n_up() {
     fi
     docker-compose --env-file "$env_filename" build --no-cache
     if [ $project -eq "test" ]; then
-        docker-compose --env-file "$env_filename" -p $project up --build -d --no-recreate
+        docker-compose --env-file "$env_filename" up --build -d --no-recreate
     else
-        docker-compose --env-file "$env_filename" -p $project up --build -d
+        docker-compose --env-file "$env_filename" up --build -d
     fi
     cd -
 }
@@ -46,13 +46,13 @@ case "$branch_name" in
         docker_compose_build_n_up $weight_folder .env.test test
         docker_compose_build_n_up $billing_folder .env.test test 
         # Run E2E tests
-        cd $billing_folder && docker-compose --env-file .env.test -p test down
-        cd $weight_folder && docker-compose --env-file .env.test -p test down
+        cd $billing_folder && docker-compose --env-file .env.test down
+        cd $weight_folder && docker-compose --env-file .env.test down
         # if success:
          #mailer.py (message to send, gitMail)
-            cd $weight_folder && docker-compose --env-file .env.prod -p prod down && \
+            cd $weight_folder && docker-compose --env-file .env.prod down && \
             docker_compose_build_n_up $weight_folder .env.prod prod
-            cd $billing_folder && docker-compose --env-file .env.prod -p prod down && \
+            cd $billing_folder && docker-compose --env-file .env.prod down && \
             docker_compose_build_n_up $billing_folder .env.prod prod
         # else:
         #mailer.py (message to send, gitMail)
@@ -71,8 +71,8 @@ case "$branch_name" in
         python3 mailer.py "Hello, you pushed into a branch on git", "$gitMail"
         # else:
         #     send failure success to push
-        cd $billing_folder && docker-compose --env-file .env.test -p test down
-        cd $weight_folder && docker-compose --env-file .env.test -p test down
+        cd $billing_folder && docker-compose --env-file .env.test down
+        cd $weight_folder && docker-compose --env-file .env.test down
         ;;
     *)
         echo "Unknown branch name: $branch_name"
