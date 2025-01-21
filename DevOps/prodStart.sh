@@ -15,13 +15,13 @@ FLAG=false
 
 check_container_running() {
     CONTAINER_NAME=$1
-    # Check if the container is running
-    if docker ps --filter "name=${CONTAINER_NAME}" --filter "status=running" -q; then
+
+    # Check if the container is running, with an exact match (using ^ and $ for start and end anchors)
+    if docker ps --filter "name=^${CONTAINER_NAME}$" --filter "status=running" -q; then
         echo "Container ${CONTAINER_NAME} is already running."
     else
         FLAG=true
-        echo "Container ${CONTAINER_NAME} is NOT running."
-        
+        echo "Container ${CONTAINER_NAME} is NOT running"
     fi
 }
 
