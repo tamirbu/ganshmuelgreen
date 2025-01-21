@@ -3,13 +3,14 @@ import mysql.connector
 import os
 from openpyxl import load_workbook
 import requests
-import datetime
-
+from datetime import datetime
 
 app = Flask(__name__)
 
-# # # Base URL of the external service
-# WEIGHT_APP_URL = "http://weight_app:5000"
+# Base URL of the external service
+container_name = os.getenv('CONTAINER_NAME')
+#WEIGHT_APP_URL = f"http://172.19.0.2:5000"
+WEIGHT_APP_URL = f"http://{container_name}:5000"
 
 #db connaction-------------------------------------------------------------------------------------
 db_host = os.getenv("DATABASE_HOST", "localhost")
@@ -60,73 +61,6 @@ def add_provider():
 
     except mysql.connector.Error as err:
         return jsonify({"error": str(err)}), 500
-
-
-    # return "HELLO"
-    print("Received request to upload ...")
-    file_path = "/app/in/rates.xlsx"
-    
-    if not os.path.exists(file_path):
-        print(f"File {file_path} not found")
-        return jsonify({"error": f"File {file_path} not found"}), 404
-
-    try:
-        # Use openpyxl to read the Excel file
-        from openpyxl import load_workbook
-        wb = load_workbook(filename=file_path)
-        ws = wb.active  # Get the active worksheet
-        
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        # Skip the header row and process data rows
-        rows = list(ws.rows)[1:]  # Skip header row
-        for row in rows:
-            try:
-                # Get values from cells
-                product = str(row[0].value)  # Product column
-                rate = float(row[1].value)   # Rate column
-                scope = str(row[2].value)    # Scope column
-                
-                print(f"Processing row: Product={product}, Rate={rate}, Scope={scope}")
-                
-                if scope.upper() == "ALL":
-                    cursor.execute(
-                        "DELETE FROM Rates WHERE product_id = %s AND (scope IS NULL OR scope = 'ALL')", 
-                        (product,)
-                    )
-                    cursor.execute(
-                        "INSERT INTO Rates (product_id, rate, scope) VALUES (%s, %s, 'ALL')",
-                        (product, rate)
-                    )
-                else:
-                    cursor.execute(
-                        "DELETE FROM Rates WHERE product_id = %s AND scope = %s",
-                        (product, scope)
-                    )
-                    cursor.execute(
-                        "INSERT INTO Rates (product_id, rate, scope) VALUES (%s, %s, %s)",
-                        (product, rate, scope)
-                    )
-                
-                conn.commit()
-                
-            except ValueError as ve:
-                print(f"Value error in row: {ve}")
-                return jsonify({"error": f"Invalid data format: {ve}"}), 400
-            except mysql.connector.Error as me:
-                print(f"Database error: {me}")
-                return jsonify({"error": f"Database error: {me}"}), 500
-
-        cursor.close()
-        conn.close()
-        wb.close()
-        
-        return jsonify({"message": "Rates updated successfully!"}), 200
-
-    except Exception as e:
-        print(f"Error occurred: {str(e)}")
-        return jsonify({"error": str(e)}), 500
 
 @app.route("/rates", methods=["POST"])
 def upload_rates():
@@ -300,7 +234,7 @@ def register_truck():
         return jsonify({"error": str(err)}), 500
 
 # put-------------------------------------------------------------------------------------------------------
-@app.route("/truck/<id>", methods=["PUT"])
+@app.route("/truckExist/<id>", methods=["PUT"])
 def update_truck(id):
     """
     Updates or creates a truck entry in the database.
@@ -424,7 +358,7 @@ def update_provider(id):
 
 # get-------------------------------------------------------------------------------------------------------
 @app.route("/truckExists/<id>", methods=["GET"])
-def get_truck(id):
+def get_truck_exists(id):
     """
     Checks if a truck with the given ID exists in the database.
 
@@ -499,69 +433,145 @@ def get_rates():
         print(f"Error: {str(e)}")  # Debug print
         return jsonify({"error": "Failed to process rates", "details": str(e)}), 500
 
-def get_default_dates():
-    """Returns the default t1 (start of the month) and t2 (current time) as strings."""
-    now = datetime.datetime.now()
-    t1 = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-    t2 = now
-    return t1.strftime('%Y%m%d%H%M%S'), t2.strftime('%Y%m%d%H%M%S')
+@app.route("/bill/<id>", methods=["GET"])
+def get_bill(id):
+    """
+    Get billing information for a provider within a specified time range.
+    """
+    try:
+        # Parse date parameters
+        t1 = request.args.get("from")
+        t2 = request.args.get("to")
+        now = datetime.now()
+        if not t2:
+            t2 = now.strftime("%Y%m%d%H%M%S")
+        if not t1:
+            t1 = now.replace(day=1, hour=0, minute=0, second=0).strftime("%Y%m%d%H%M%S")
 
-# @app.route("/truck/<id>", methods=["GET"])
-# def get_truck(id):
-#     """
-#     Handles GET /truck/<id>?from=t1&to=t2 endpoint.
+        # Get provider information
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT id, name FROM Provider WHERE id = %s", (id,))
+        provider = cursor.fetchone()
+        if not provider:
+            return jsonify({"error": f"Provider {id} not found"}), 404
 
-#     Parameters:
-#         id (str): The truck ID.
+        # Get all trucks for this provider
+        cursor.execute("SELECT id FROM Trucks WHERE provider_id = %s", (id,))
+        provider_trucks = {truck["id"] for truck in cursor.fetchall()}
 
-#     Query Parameters:
-#         from (str): Start datetime (yyyymmddhhmmss).
-#         to (str): End datetime (yyyymmddhhmmss).
+        # Get rates for this provider
+        cursor.execute(
+            """
+            SELECT product_id, rate, scope
+            FROM Rates
+            WHERE scope = %s OR scope = 'ALL'
+            ORDER BY scope DESC
+            """,
+            (id,)
+        )
+        rates = cursor.fetchall()
 
-#     Returns:
-#         JSON response with truck details or an error message.
-#     """
-#     # Extract query parameters
-#     t1 = request.args.get("from")
-#     t2 = request.args.get("to")
+        # Create rates lookup dictionary
+        rates_lookup = {rate['product_id']: rate['rate'] for rate in rates}
 
-#     # If t1 or t2 are missing, set default values
-#     if not t1 or not t2:
-#         default_t1, default_t2 = get_default_dates()
-#         t1 = t1 or default_t1
-#         t2 = t2 or default_t2
+        cursor.close()
+        conn.close()
 
-#     # Validate the truck ID format (example: alphanumeric with dashes)
-#     if not isinstance(id, str) or len(id) > 50:
-#         return jsonify({"error": "Invalid truck ID format"}), 400
+        # Get sessions from weight service
+        try:
+            weight_response = requests.get(
+                f"{WEIGHT_APP_URL}/weight",
+                params={"from": t1, "to": t2},
+                timeout=5
+            )
+            weight_response.raise_for_status()
+            transactions = weight_response.json()
+        except requests.RequestException as e:
+            return jsonify({"error": f"Failed to fetch data from weight service: {str(e)}"}), 503
 
-#     try:
-#         # Call the external weight_app service
-#         response = requests.get(f"{WEIGHT_APP_URL}/item/{id}", params={"from": t1, "to": t2})
+        # Process transactions and calculate billing
+        products = {}
+        session_count = 0
+        missing_rates = set()
 
-#         # Handle response from weight_app
-#         if response.status_code == 404:
-#             return jsonify({"error": "Truck ID not found"}), 404
+        for transaction in transactions:
+            transaction_id = transaction.get("id")
+            direction = transaction.get("direction")
+            produce = transaction.get("produce")
 
-#         if response.status_code != 200:
-#             return jsonify({"error": "Failed to fetch data from weight service", "details": response.text}), 500
+            # check the out diraction and not null productions
+            if direction != "out" or produce == "na":
+                continue
 
-#         # Parse the response from weight_app
-#         data = response.json()
+            try:
+                # Get session details from /session/<id>
+                session_response = requests.get(f"{WEIGHT_APP_URL}/session/{transaction_id}", timeout=5)
+                session_response.raise_for_status()
+                session = session_response.json()
+            # session exception
+            except requests.RequestException as e:
+                print(f"Failed to fetch session {transaction_id}: {str(e)}")
+                continue 
 
-#         # Transform the data for the truck endpoint
-#         transformed_data = {
-#             "id": data["id"],
-#             "tara": data.get("tara", "na"),
-#             "sessions": data.get("sessions", [])
-#         }
+            # get just the provider truck
+            truck_id = session.get("truck")
+            if truck_id not in provider_trucks:
+                continue
 
-#         return jsonify(transformed_data), 200
+            # session counter
+            session_count += 1
 
-#     except requests.exceptions.RequestException as e:
-#         # Handle network or request errors
-#         return jsonify({"error": "Failed to connect to weight service", "details": str(e)}), 500
+            # check the produce rate
+            if produce not in rates_lookup:
+                missing_rates.add(produce)
+                continue  
 
+            if produce not in products:
+                products[produce] = {
+                    "product": produce,
+                    "count": 0,
+                    "amount": 0,
+                    "rate": rates_lookup[produce],
+                    "pay": 0
+                }
+
+            products[produce]["count"] += 1
+            if session.get('neto') and session['neto'] != 'na':
+                amount = session['neto']
+                products[produce]["amount"] += amount
+                products[produce]["pay"] += (amount * rates_lookup[produce])
+
+        # print the products that have no rate
+        if missing_rates:
+            return jsonify({
+                "error": "Missing rates for the following products.",
+                "missing_products": list(missing_rates),
+                "message": "Please add rates for these products in the Rates table."
+            }), 400
+
+        # Calculate total payment
+        total = sum(p["pay"] for p in products.values())
+        # bill
+        response = {
+            "id": str(provider["id"]),
+            "name": provider["name"],
+            "from": format_date(t1),
+            "to": format_date(t2),
+            "truckCount": len(provider_trucks),
+            "sessionCount": session_count,
+            "products": list(products.values()),
+            "total": total
+        }
+        return jsonify(response), 200
+
+    except Exception as e:
+        print(f"Error generating bill: {e}")
+        return jsonify({"error": "Internal server error", "details": str(e)}), 500
+
+def format_date(timestamp):
+    """Converts YYYYMMDDHHMMSS to d/m/y format."""
+    return datetime.strptime(timestamp, "%Y%m%d%H%M%S").strftime("%d/%m/%Y")
 
 # home page--------------------------------------------------------------------------------------
 @app.route("/")
