@@ -24,7 +24,7 @@ docker-compose --env-file .env.prod build --no-cache
 docker-compose --env-file .env.prod up --build -d
 cd -
 
-cd $main_folder && echo "Removing $repo_folder..." %%rm -rf $repo_folder
+cd $main_folder && echo "Removing $repo_folder..." && rm -rf $repo_folder
 
 
 
