@@ -67,3 +67,7 @@ services:
 
 volumes:
   mysql_weight_data:
+
+networks:
+  shared_network:
+    external: true
