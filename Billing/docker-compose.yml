@@ -48,7 +48,7 @@ services:
       timeout: 10s
       retries: 5
     volumes:
-      - mysql_data:/var/lib/mysql  # Dynamically named volume
+      - mysql_data:/var/lib/mysql  
       - ./billingdb.sql:/docker-entrypoint-initdb.d/billingdb.sql
     networks:
       - shared_network
