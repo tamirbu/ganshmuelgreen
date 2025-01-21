@@ -3,13 +3,15 @@ import mysql.connector
 import os
 from openpyxl import load_workbook
 import requests
-import datetime
+from datetime import datetime
+
 
 
 app = Flask(__name__)
 
-# # # Base URL of the external service
-# WEIGHT_APP_URL = "http://weight_app:5000"
+# Base URL of the external service
+container_name = os.getenv('CONTAINER_NAME')
+WEIGHT_APP_URL = f"http://{container_name}:5000"
 
 #db connaction-------------------------------------------------------------------------------------
 db_host = os.getenv("DATABASE_HOST", "localhost")
@@ -300,7 +302,7 @@ def register_truck():
         return jsonify({"error": str(err)}), 500
 
 # put-------------------------------------------------------------------------------------------------------
-@app.route("/truck/<id>", methods=["PUT"])
+@app.route("/truckExist/<id>", methods=["PUT"])
 def update_truck(id):
     """
     Updates or creates a truck entry in the database.
@@ -424,7 +426,7 @@ def update_provider(id):
 
 # get-------------------------------------------------------------------------------------------------------
 @app.route("/truckExists/<id>", methods=["GET"])
-def get_truck(id):
+def get_truck_exists(id):
     """
     Checks if a truck with the given ID exists in the database.
 
@@ -506,61 +508,155 @@ def get_default_dates():
     t2 = now
     return t1.strftime('%Y%m%d%H%M%S'), t2.strftime('%Y%m%d%H%M%S')
 
-# @app.route("/truck/<id>", methods=["GET"])
-# def get_truck(id):
+@app.route("/truck/<id>", methods=["GET"])
+def get_truck(id):
+    """
+    Handles GET /truck/<id>?from=t1&to=t2 endpoint.
+
+    Parameters:
+        id (str): The truck ID.
+
+    Query Parameters:
+        from (str): Start datetime (yyyymmddhhmmss).
+        to (str): End datetime (yyyymmddhhmmss).
+
+    Returns:
+        JSON response with truck details or an error message.
+    """
+    # Extract query parameters
+    t1 = request.args.get("from")
+    t2 = request.args.get("to")
+
+    # If t1 or t2 are missing, set default values
+    if not t1 or not t2:
+        default_t1, default_t2 = get_default_dates()
+        t1 = t1 or default_t1
+        t2 = t2 or default_t2
+
+    # Validate the truck ID format (example: alphanumeric with dashes)
+    if not isinstance(id, str) or len(id) > 50:
+        return jsonify({"error": "Invalid truck ID format"}), 400
+
+    try:
+        # Call the external weight_app service
+        response = requests.get(f"{WEIGHT_APP_URL}/item/{id}", params={"from": t1, "to": t2})
+
+        # Handle response from weight_app
+        if response.status_code == 404:
+            return jsonify({"error": "Truck ID not found"}), 404
+
+        if response.status_code != 200:
+            return jsonify({"error": "Failed to fetch data from weight service", "details": response.text}), 500
+
+        # Parse the response from weight_app
+        data = response.json()
+
+        # Transform the data for the truck endpoint
+        transformed_data = {
+            "id": data["id"],
+            "tara": data.get("tara", "na"),
+            "sessions": data.get("sessions", [])
+        }
+
+        return jsonify(transformed_data), 200
+
+    except requests.exceptions.RequestException as e:
+        # Handle network or request errors
+        return jsonify({"error": "Failed to connect to weight service", "details": str(e)}), 500
+
+# @app.route("/bill/<id>", methods=["GET"])
+# def get_bill(id):
 #     """
-#     Handles GET /truck/<id>?from=t1&to=t2 endpoint.
-
-#     Parameters:
-#         id (str): The truck ID.
-
-#     Query Parameters:
-#         from (str): Start datetime (yyyymmddhhmmss).
-#         to (str): End datetime (yyyymmddhhmmss).
-
-#     Returns:
-#         JSON response with truck details or an error message.
+#     Get billing information for a provider within a specified time range.
 #     """
-#     # Extract query parameters
-#     t1 = request.args.get("from")
-#     t2 = request.args.get("to")
-
-#     # If t1 or t2 are missing, set default values
-#     if not t1 or not t2:
-#         default_t1, default_t2 = get_default_dates()
-#         t1 = t1 or default_t1
-#         t2 = t2 or default_t2
-
-#     # Validate the truck ID format (example: alphanumeric with dashes)
-#     if not isinstance(id, str) or len(id) > 50:
-#         return jsonify({"error": "Invalid truck ID format"}), 400
-
 #     try:
-#         # Call the external weight_app service
-#         response = requests.get(f"{WEIGHT_APP_URL}/item/{id}", params={"from": t1, "to": t2})
-
-#         # Handle response from weight_app
-#         if response.status_code == 404:
-#             return jsonify({"error": "Truck ID not found"}), 404
-
-#         if response.status_code != 200:
-#             return jsonify({"error": "Failed to fetch data from weight service", "details": response.text}), 500
-
-#         # Parse the response from weight_app
-#         data = response.json()
-
-#         # Transform the data for the truck endpoint
-#         transformed_data = {
-#             "id": data["id"],
-#             "tara": data.get("tara", "na"),
-#             "sessions": data.get("sessions", [])
+#         # Parse date parameters
+#         t1 = request.args.get("from")
+#         t2 = request.args.get("to")
+#         # Set default dates if not provided
+#         now = datetime.now()
+#         if not t2:
+#             t2 = now.strftime("%Y%m%d%H%M%S")
+#         if not t1:
+#             t1 = now.replace(day=1, hour=0, minute=0, second=0).strftime("%Y%m%d%H%M%S")
+#         # Get provider information
+#         conn = get_db_connection()
+#         cursor = conn.cursor(dictionary=True)
+#         # Get provider details
+#         cursor.execute("SELECT id, name FROM Provider WHERE id = %s", (id,))
+#         provider = cursor.fetchone()
+#         if not provider:
+#             return jsonify({"error": f"Provider {id} not found"}), 404
+#         # Get all trucks for this provider
+#         cursor.execute("SELECT id FROM Trucks WHERE provider_id = %s", (id,))
+#         trucks = [truck['id'] for truck in cursor.fetchall()]
+#         # Get rates for this provider
+#         cursor.execute("""
+#             SELECT product_id, rate, scope
+#             FROM Rates
+#             WHERE scope = %s OR scope = 'ALL'
+#             ORDER BY scope DESC
+#         """, (id,))
+#         rates = cursor.fetchall()
+#         # Create rates lookup dictionary
+#         rates_lookup = {}
+#         for rate in rates:
+#             if rate['product_id'] not in rates_lookup:
+#                 rates_lookup[rate['product_id']] = rate['rate']
+#         cursor.close()
+#         conn.close()
+#         # Get sessions from weight service
+#         try:
+#             weight_response = requests.get(
+#                 f"{WEIGHT_APP_URL}/weight",
+#                 params={"from": t1, "to": t2},
+#                 timeout=5
+#             )
+#             weight_response.raise_for_status()
+#             sessions = weight_response.json()
+#         except requests.RequestException as e:
+#             return jsonify({"error": f"Failed to fetch data from weight service: {str(e)} ----- { t1,  t2}"}), 503
+#         # Process sessions and calculate billing
+#         products: Dict[str, Dict] = {}
+#         session_count = 0
+#         for session in sessions:
+#             # Only consider 'out' sessions with trucks belonging to this provider
+#             if (session.get('direction') == 'out' and
+#                 session.get('truck') in trucks and
+#                 session.get('produce') != 'na'):
+#                 session_count += 1
+#                 produce = session['produce']
+#                 if produce not in products:
+#                     products[produce] = {
+#                         "product": produce,
+#                         "count": 0,
+#                         "amount": 0,
+#                         "rate": rates_lookup.get(produce, 0),
+#                         "pay": 0
+#                     }
+#                 products[produce]["count"] += 1
+#                 # Get neto weight from session details
+#                 if session.get('neto') and session['neto'] != 'na':
+#                     amount = session['neto']
+#                     products[produce]["amount"] += amount
+#                     # Calculate payment in agorot (1 shekel = 100 agorot)
+#                     products[produce]["pay"] += (amount * rates_lookup.get(produce, 0))
+#         # Calculate total payment
+#         total = sum(p["pay"] for p in products.values())
+#         response = {
+#             "id": str(provider["id"]),
+#             "name": provider["name"],
+#             "from": t1,
+#             "to": t2,
+#             "truckCount": len(trucks),
+#             "sessionCount": session_count,
+#             "products": list(products.values()),
+#             "total": total
 #         }
-
-#         return jsonify(transformed_data), 200
-
-#     except requests.exceptions.RequestException as e:
-#         # Handle network or request errors
-#         return jsonify({"error": "Failed to connect to weight service", "details": str(e)}), 500
+#         return jsonify(response), 200
+#     except Exception as e:
+#         print(f"Error generating bill: {e}")
+#         return jsonify({"error": "Internal server error", "details": str(e)}), 500
 
 
 # home page--------------------------------------------------------------------------------------
