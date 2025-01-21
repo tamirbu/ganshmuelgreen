@@ -45,90 +45,6 @@ def health():
         print(f"Health check failed: {e}")
         return "Failure", 500
         
-# @app.route('/weight', methods=['GET'])
-# def get_weight():
-#     # Get query parameters
-#     from_date = request.args.get('from')
-#     to_date = request.args.get('to')
-#     filter_param = request.args.get('filter', 'in,out,none')
-
-#     # Prepare the SQL query
-#     query = """
-#     SELECT id, direction, bruto, neto, produce, containers, truck
-#     FROM Transactions
-#     WHERE datetime BETWEEN %s AND %s
-#     AND direction IN ({})
-#     """.format(','.join(['%s'] * len(filter_param.split(','))))
-
-#     params = [from_date, to_date] + filter_param.split(',')
-
-#     try:
-#         cursor = mysql.connection.cursor()
-#         cursor.execute(query, params)
-#         mysql.connection.commit()
-#         transactions = cursor.fetchall()
-#         cursor.close()
-
-#         result = []
-#         for t in transactions:
-#             transaction_dict = {
-#                 "id": t['id'],
-#                 "direction": t['direction'],
-#                 "bruto": int(t['bruto']),  # Ensure it's an integer
-#                 "neto": int(t['neto']) if t['neto'] is not None else "na",
-#                 "produce": t['produce'],
-#                 "containers": t['containers'].split(',') if t['containers'] else []
-#             }
-            
-#             # Handle 'none' direction for containers without a truck
-#             if t['direction'] == 'none' and t['truck'] == 'na':
-#                 transaction_dict["direction"] = "none"
-            
-#             result.append(transaction_dict)
-
-#         return jsonify(result)
-
-#     except Exception as e:
-#         print(f"Database error: {e}")
-#         return jsonify({"error": "An error occurred while processing the request"}), 500
-
-#     finally:
-#         if cursor:
-#             cursor.close()
-
-# @app.route('/weight', methods=['GET'])
-# def get_weights():
-#     t1 = request.args.get('from', datetime.now().strftime('%Y%m%d') + "000000")
-#     t2 = request.args.get('to', datetime.now().strftime('%Y%m%d%H%M%S'))
-#     f = request.args.get('filter', 'in,out,none').split(',')
-
-#     t1_formatted = datetime.strptime(t1, '%Y%m%d%H%M%S').strftime('%Y-%m-%d %H:%M:%S')
-#     t2_formatted = datetime.strptime(t2, '%Y%m%d%H%M%S').strftime('%Y-%m-%d %H:%M:%S')
-
-#     cursor = mysql.connection.cursor()
-#     query = f"""
-#         SELECT id, direction, bruto, neto, produce, containers
-#         FROM transactions
-#         WHERE datetime BETWEEN %s AND %s
-#           AND direction IN ({','.join(['%s'] * len(f))})
-#     """
-#     cursor.execute(query, [t1_formatted, t2_formatted, *f])
-#     results = cursor.fetchall()
-#     cursor.close()
-
-#     output = []
-#     for row in results:
-#         containers = row[5].split(',') 
-#         neto = row[3] if row[3] is not None else "na"
-#         output.append({
-#             "id": row[0],
-#             "direction": row[1],
-#             "bruto": row[2],
-#             "neto": neto,
-#             "produce": row[4],
-#             "containers": containers
-#         })
-#     return jsonify(output), 200
 
 @app.route('/weight', methods=['GET'])
 def get_weights():
@@ -271,6 +187,7 @@ def get_session(id):
     Fetch details about a specific session.
     """
     try:
+<<<<<<< HEAD
         cursor = mysql.connection.cursor(dictionary=True)
         cursor.execute("""
             SELECT id, truck, bruto, direction, truckTara, neto, produce
@@ -292,9 +209,34 @@ def get_session(id):
             response["truckTara"] = session['truckTara']
             response["neto"] = session['neto'] if session['neto'] is not None else "na"
             return jsonify(response)
+=======
+        cursor= mysql.connection.cursor()
+        cursor.execute("SELECT * FROM transactions WHERE id = %s", (id,))
+        session = cursor.fetchone()
+        if not session:
+            return jsonify({"error": "Session not found"}), 404
+        
+        column_names = [desc[0] for desc in cursor.description]
+        session_dict = dict(zip(column_names, session))
+
+        response = {
+            "id": session_dict["id"],
+            "truck": session_dict["truck"] if session_dict["truck"] else "na",
+            "bruto": session_dict["bruto"],
+        }
+
+        if session_dict["direction"] == "out":
+            response["truckTara"] = session_dict["truckTara"]
+            if session_dict["neto"] =="None":
+               response["neto"] = "na"
+            else:   
+               response["neto"] = session_dict["neto"]
+
+        return jsonify(response),200
+>>>>>>> 9b85ee24c49c4a0d65915262acefc48188cd40ad
     except Exception as e:
-        print(f"Database error: {e}")
-        return jsonify({"error": "An error occurred while processing the request"}), 500
+        print(f"Error: {e}")
+        return jsonify({"error": "Internal server error"}), 500
 
 def process_csv_file(file_path: Path) -> List[Tuple[str, int]]:
     """
