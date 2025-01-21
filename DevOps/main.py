@@ -44,5 +44,10 @@ def webhook():
     
     return jsonify({'message': 'Webhook received'}), 200
 
+@app.route('/health', methods=['GET'])
+def health_check():
+    response = { 'status': 'healthy', 'message': 'The CI app is running smoothly.'}
+    return jsonify(response), 200
+
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0')
