@@ -16,6 +16,7 @@ services:
       - DATABASE_NAME=${DATABASE_NAME}
       - DATABASE_USER=${DATABASE_USER}
       - DATABASE_PASSWORD=${DATABASE_PASSWORD}
+      - CONTAINER_NAME=${PROJECT_NAME}_weight_app
     depends_on:
       db:
         condition: service_healthy
