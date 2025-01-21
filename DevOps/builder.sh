@@ -53,13 +53,16 @@ case "$branch_name" in
         ;;
     "billing"|"weight")
         git clone --single-branch --branch $branch_name https://github.com/tamirbu/ganshmuelgreen.git
+
+        
         cd $weight_folder
         docker-compose --env-file .env.test up -d
         cd $billing_folder
         docker-compose --env-file .env.test up -d
+
         # Run E2E tests
         # if success:
-            #mailer.py (message to send, gitMail)
+        python3 mailer.py "Hello, you pushed into a branch on git", "$gitMail"
         # else:
         #     send failure success to push
         cd $billing_folder
