@@ -2,6 +2,7 @@ version: '3.8'
 
 services:
   app:
+    image: billingapp:${PROJECT_NAME}
     build:
       context: .
       dockerfile: Dockerfile
@@ -9,7 +10,7 @@ services:
     volumes:
       - ./src/in:/app/in
     ports:
-      - "${APP_PORT_MAPPING}:5000"  
+      - "${APP_PORT_MAPPING}:5000"
     environment:
       - DATABASE_HOST=${DATABASE_HOST}
       - DATABASE_PORT=${DATABASE_PORT}
@@ -29,10 +30,13 @@ services:
       - shared_network
 
   db:
-    image: mysql:8.0
+    image: billing_mysql:${PROJECT_NAME}
+    build:
+      context: .
+      dockerfile: DockerfileMySQL
     container_name: ${PROJECT_NAME}_billing_mysql
     ports:
-      - "${DB_PORT_MAPPING}:3306"  
+      - "${DB_PORT_MAPPING}:3306"
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: ${DATABASE_NAME}
@@ -40,17 +44,19 @@ services:
       MYSQL_PASSWORD: ${DATABASE_PASSWORD}
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "${DATABASE_HOST}"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
+      interval: 30s
+      timeout: 10s
+      retries: 5
     volumes:
-      - mysql_data:/var/lib/mysql
+      - mysql_data:/var/lib/mysql  # Dynamically named volume
       - ./billingdb.sql:/docker-entrypoint-initdb.d/billingdb.sql
     networks:
       - shared_network
 
 volumes:
   mysql_data:
+    external:
+      name: ${PROJECT_NAME}_mysql_data
 
 networks:
   shared_network:

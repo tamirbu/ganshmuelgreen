@@ -1,0 +1,9 @@
+# Use the official MySQL image as a base
+FROM mysql:8.0
+
+
+# Optionally, add any custom initialization scripts or configurations
+# COPY ./init.sql /docker-entrypoint-initdb.d/
+
+# Expose MySQL port
+EXPOSE 3306
