@@ -6,7 +6,7 @@ from unittest.mock import patch, MagicMock
 
 class TestFlaskApp(unittest.TestCase):
     BASE_URL = "http://test_billing_app:5000"
-    TEST_FILE_PATH = "/app/in/rates.xlsx"  # Adjust path to match container setup
+    TEST_FILE_PATH = "/app/in/rates.xlsx" 
 
     def setUp(self):
         """Setup logic before each test."""
@@ -66,7 +66,7 @@ class TestFlaskApp(unittest.TestCase):
 
     def test_update_truck_success(self):
         """Test updating an existing truck."""
-        response = requests.put(f"{self.BASE_URL}/truckExist/T123", json={"provider_id": self.default_provider_id})
+        response = requests.put(f"{self.BASE_URL}/truck/T123", json={"provider_id": self.default_provider_id})
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["id"], "T123")
         self.assertEqual(response.json()["provider_id"], self.default_provider_id)
