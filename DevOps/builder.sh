@@ -34,11 +34,6 @@ docker_compose_build_n_up() {
     cd -
 }
 
-if [ $? -ne 0 ]; then
-  echo "Failed to clone branch: $branch_name"
-  exit 1
-fi
-
 case "$branch_name" in
     "main")
         python3 mailer.py "Hello from the webserver" "$gitMail"
@@ -61,6 +56,7 @@ case "$branch_name" in
     "devops")
         echo 'devops is not automatically built and deployed'
         python3 mailer.py "Hello, you pushed into Devops branch", "$gitMail"
+        exit 0
         ;;
     "billing"|"weight")
         git clone --single-branch --branch $branch_name https://github.com/tamirbu/ganshmuelgreen.git
@@ -76,7 +72,7 @@ case "$branch_name" in
         ;;
     *)
         echo "Unknown branch name: $branch_name"
-        exit 1
+        exit 0
         ;;
 esac
 cd $main_folder
