@@ -410,7 +410,7 @@ def batch_weight() -> tuple:
     try:
         # Validate request
         if 'file' not in request.form:
-            return jsonify({"error": "No file specified"}), 400
+            return jsonify({"error": "No file specified"}), 404
             
         filename = request.form['file']
         file_path = Path('/app/in') / filename
@@ -426,7 +426,7 @@ def batch_weight() -> tuple:
         elif ext == '.csv':
             records = process_csv_file(file_path)
         else:
-            return jsonify({"error": "Unsupported file format"}), 400
+            return jsonify({"error": "Unsupported file format"}), 404
 
         # Update database
         cursor = mysql.connection.cursor()
