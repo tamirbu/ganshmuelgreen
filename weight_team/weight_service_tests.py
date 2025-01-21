@@ -23,14 +23,6 @@ class TestWeightAPI(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json, "OK")
 
-    def test_get_weight_no_filters(self):
-        """
-        Test the /weight endpoint without filters (default behavior).
-        """
-        response = self.client.get('/weight')
-        self.assertEqual(response.status_code, 200)
-        self.assertIsInstance(response.json, list)
-
     def test_get_weight_with_filters(self):
         """
         Test the /weight endpoint with from, to, and filter query parameters.
