@@ -21,8 +21,7 @@ check_container_running() {
     else
         FLAG=true
         echo "Container ${CONTAINER_NAME} is NOT running."
-        # Optionally, start the container if not running
-        # docker-compose up -d ${CONTAINER_NAME}
+        
     fi
 }
 
