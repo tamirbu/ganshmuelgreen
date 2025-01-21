@@ -542,7 +542,7 @@ def get_truck(id):
         params["to"] = t2
 
     # Validate the truck ID format (example: alphanumeric with dashes)
-    if not isinstance(id, str) or len(id) > 50:
+    if not isinstance(id, str) or len(id) > 10:
         return jsonify({"error": "Invalid truck ID format"}), 400
 
     try:
