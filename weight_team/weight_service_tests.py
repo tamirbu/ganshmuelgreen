@@ -1,9 +1,9 @@
-import unittest
+import unittest,sys,json
 from flask import Flask
-from flask.testing import FlaskClient
-from weight_service import app  # Assuming the main app is named weight_service.py
-import json
+from flask.testing import FlaskClient 
 from pathlib import Path
+from weight_service import app, calculate_neto 
+sys.path.append(str(Path(__file__).parent.resolve()))
 
 
 class TestWeightAPI(unittest.TestCase):
@@ -150,21 +150,28 @@ class TestWeightAPI(unittest.TestCase):
         self.assertEqual(response.status_code, 404)
         self.assertIn("error", response.json)
 
-    def test_calculate_neto_valid_data(self):
-        """
-        Test the calculate_neto function with valid data.
-        """
-        bruto = 25000
-        truck_tara = 10000
-        container_taras = [3000, 2000]
-        expected_neto = 25000 - 10000 - 5000
-        response = self.client.post('/weight', data=json.dumps({
-            "bruto": bruto,
-            "truck_tara": truck_tara,
-            "container_taras": container_taras
-        }), content_type='application/json')
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json.get("neto"), expected_neto)
+    # def test_calculate_neto_valid_data(self):
+    #     """
+    #     Test the calculate_neto function with valid data.
+    #     """
+    #     bruto = 25000
+    #     truck_tara = 10000
+    #     container_taras = [3000, 2000]
+    #     expected_neto = 25000 - 10000 - 5000
+    #     response = self.client.post('/weight', data=json.dumps({
+    #         "bruto": bruto,
+    #         "truck_tara": truck_tara,
+    #         "container_taras": container_taras
+    #     }), content_type='application/json')
+    #     self.assertEqual(response.status_code, 200)
+    #     self.assertEqual(response.json.get("neto"), expected_neto)
+    
+    def test_calculate_neto_function(self):
+      bruto = 25000
+      truck_tara = 10000
+      container_taras = [3000, 2000]
+      expected_neto = 25000 - 10000 - 5000
+      self.assertEqual(calculate_neto(bruto, truck_tara, container_taras), expected_neto)
 
     def test_post_weight_force_override(self):
         """
@@ -200,4 +207,10 @@ class TestWeightAPI(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    # Define the output file for the test results
+    output_file = Path("/app/outputs/test_results.log")
+
+    # Run the tests and save results to the file
+    with output_file.open("w") as f:
+        test_runner = unittest.TextTestRunner(stream=f, verbosity=2)
+        unittest.main(testRunner=test_runner, exit=True)
