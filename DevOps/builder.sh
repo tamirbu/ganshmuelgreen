@@ -16,6 +16,18 @@ gitMail=$2
 branch_name=$1
 echo "branch is '$branch_name'"
 
+docker_compose_build_n_up() {
+    local folder=$1
+    local env_filename=$2
+    cd $folder
+    if [ $? -ne 0 ]; then
+        echo "failed to enter '$folder'"
+        return 1
+    fi
+    docker-compose --env-file "$env_filename" build --no-cache
+    docker-compose --env-file "$env_filename" up --build -d
+    cd -
+}
 
 if [ $? -ne 0 ]; then
   echo "Failed to clone branch: $branch_name"
@@ -24,19 +36,13 @@ fi
 
 case "$branch_name" in
     "main")
-        # cd $repo_folder
-        # docker-compose -p prod -f main-docker-compose.yml up --force-recreate --env-file .env.prod up
         python3 mailer.py "Hello from the webserver" "$gitMail"
         git clone --single-branch --branch $branch_name https://github.com/tamirbu/ganshmuelgreen.git
-        cd $weight_folder
-        docker-compose --env-file .env.test up -d
-        cd $billing_folder
-        docker-compose --env-file .env.test up -d
+        docker_compose_build_n_up $weight_folder .env.test test
+        docker_compose_build_n_up $billing_folder .env.test test 
         # Run E2E tests
-        cd $billing_folder
-        docker-compose --env-file .env.test down
-        cd $weight_folder
-        docker-compose --env-file .env.test down
+        cd $billing_folder && docker-compose --env-file .env.test down
+        cd $weight_folder && docker-compose --env-file .env.test down
         # if success:
          #mailer.py (message to send, gitMail)
             cd $weight_folder
@@ -53,27 +59,15 @@ case "$branch_name" in
         ;;
     "billing"|"weight")
         git clone --single-branch --branch $branch_name https://github.com/tamirbu/ganshmuelgreen.git
-
-        
-        cd $weight_folder
-        docker-compose --env-file .env.test up -d
-        cd $billing_folder
-        docker-compose --env-file .env.test up -d
-
+        docker_compose_build_n_up $weight_folder .env.test test
+        docker_compose_build_n_up $billing_folder .env.test test 
         # Run E2E tests
         # if success:
         python3 mailer.py "Hello, you pushed into a branch on git", "$gitMail"
         # else:
         #     send failure success to push
-        cd $billing_folder
-        docker-compose --env-file .env.test down
-        cd $weight_folder
-        docker-compose --env-file .env.test down
-
-        # if [ $? -ne 0 ]; then
-        #     echo "Failed to build Docker image for $branch_name"
-        #     exit 1
-        # fi
+        cd $billing_folder && docker-compose --env-file .env.test down
+        cd $weight_folder && docker-compose --env-file .env.test down
         ;;
     *)
         echo "Unknown branch name: $branch_name"
