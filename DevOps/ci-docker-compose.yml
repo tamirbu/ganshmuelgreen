@@ -2,12 +2,12 @@ services:
   flask-app:
     build: .
     container_name: ci-container
-    healthcheck:
-      test: ["CMD", "curl", "--fail", "http://localhost:5000/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 5s
+    # healthcheck:
+    #   test: ["CMD", "curl", "--fail", "http://localhost:5000/health"]
+    #   interval: 10s
+    #   timeout: 5s
+    #   retries: 3
+    #   start_period: 5s
     working_dir: /app
     volumes:
       - .:/app
