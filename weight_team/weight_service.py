@@ -1,6 +1,6 @@
 from flask import Flask, jsonify, request
 from flask_mysqldb import MySQL
-import os, uuid
+import os
 import json
 import csv
 from pathlib import Path
@@ -93,17 +93,20 @@ def get_weights():
 
 @app.route('/unknown', methods=['GET'])
 def get_unknown_containers():
+    try:
         cursor = mysql.connection.cursor()
         cursor.execute("""
         SELECT container_id
         FROM containers_registered
         WHERE weight IS NULL OR weight = 0
-        """
-        )
-        result = cursor.fetchall()    
-        cursor.close()
+        """)
+        result = cursor.fetchall()
         container_ids = [row[0] for row in result]
         return jsonify(container_ids), 200
+    except Exception as e:
+        return jsonify({"error": f"An error occurred: {str(e)}"}), 500
+    finally:
+        cursor.close()
 
 @app.route('/item/<id>', methods=['GET'])
 def get_item(id):
@@ -225,7 +228,7 @@ def get_session(id):
 
         if session_dict["direction"] == "out":
             response["truckTara"] = session_dict["truckTara"]
-            if session_dict["neto"] =="None":
+            if session_dict["neto"] is None:
                response["neto"] = "na"
             else:   
                response["neto"] = session_dict["neto"]
@@ -311,7 +314,7 @@ def calculate_neto(bruto, truck_tara, container_taras):
     print (bruto, truck_tara, container_taras)
     return bruto - truck_tara - sum(container_taras)
 
-# API routes
+
 @app.route('/weight', methods=['POST'])
 def post_weight():
     data = request.get_json()
@@ -333,80 +336,100 @@ def post_weight():
 
     # Convert to kg if needed
     if unit == "lbs":
-        weight = float(weight * 0.453592)
+        weight = int(weight * 0.453592)
 
-    session_id = str(uuid.uuid4())
     timestamp = datetime.now().isoformat()
+
+    cursor = mysql.connection.cursor()
 
     # Handle "none"
     if direction == "none":
+        cursor.execute("""
+            SELECT id FROM transactions WHERE truck = %s AND direction = 'in' ORDER BY datetime DESC LIMIT 1
+        """, (truck,))
+        last_in_session = cursor.fetchone()
+
+        if last_in_session:
+            return jsonify({"error": "'none' after 'in' is not allowed"}), 400
+
         query = """
-                INSERT INTO transactions (datetime, direction, bruto)
-                VALUES (%s, %s, %s)
-                """
-        cursor = mysql.connection.cursor()
+            INSERT INTO transactions (datetime, direction, bruto)
+            VALUES (%s, %s, %s)
+        """
         cursor.execute(query, (timestamp, direction, weight))
         mysql.connection.commit()
+        session_id = cursor.lastrowid
         cursor.close()
-        return jsonify({"session_id": session_id}), 200
+        return jsonify({"id": session_id, "truck": "na", "bruto": weight}), 200
 
     # Handle "in"
     if direction == "in":
+        cursor.execute("""
+            SELECT id FROM transactions WHERE truck = %s AND direction = 'in' ORDER BY datetime DESC LIMIT 1
+        """, (truck,))
+        last_in_session = cursor.fetchone()
+
+        if last_in_session and not force:
+            return jsonify({"error": "Truck already weighed in, use force=true to overwrite"}), 400
+
+        if last_in_session and force:
+            query = """
+                UPDATE transactions 
+                SET datetime = %s, containers = %s, bruto = %s, produce = %s
+                WHERE id = %s
+            """
+            containers_str = ",".join(containers_list)
+            cursor.execute(query, (timestamp, containers_str, weight, produce, last_in_session[0]))
+            mysql.connection.commit()
+            return jsonify({"id": last_in_session[0], "truck": truck, "bruto": weight}), 200
+
         query = """
-                INSERT INTO transactions (datetime, direction, truck, containers, bruto, produce)
-                VALUES (%s, %s, %s, %s, %s, %s)
-                """
+            INSERT INTO transactions (datetime, direction, truck, containers, bruto, produce)
+            VALUES (%s, %s, %s, %s, %s, %s)
+        """
         containers_str = ",".join(containers_list)
-        cursor = mysql.connection.cursor()
         cursor.execute(query, (timestamp, direction, truck, containers_str, weight, produce))
         mysql.connection.commit()
+        session_id = cursor.lastrowid
         cursor.close()
-        return jsonify({"session_id": session_id}), 200
+        return jsonify({"id": session_id, "truck": truck, "bruto": weight}), 200
 
     # Handle "out"
     if direction == "out":
-        cursor = mysql.connection.cursor()
         cursor.execute("""
-                SELECT id, bruto FROM transactions WHERE truck = %s AND direction = 'in' ORDER BY datetime DESC LIMIT 1
-                """, (truck,))
+            SELECT id, bruto FROM transactions WHERE truck = %s AND direction = 'in' ORDER BY datetime DESC LIMIT 1
+        """, (truck,))
         previous_session = cursor.fetchone()
+
         if not previous_session:
             return jsonify({"error": "'out' without 'in' is not allowed"}), 400
+
         previous_id, bruto = previous_session
-        cursor.execute("""
-                SELECT weight FROM containers_registered WHERE container_id IN (%s)
-                """, (",".join(containers_list),))
+
+        placeholders = ", ".join(["%s"] * len(containers_list))
+        query = f"SELECT weight FROM containers_registered WHERE container_id IN ({placeholders})"
+        cursor.execute(query, containers_list)
         container_weights = cursor.fetchall()
-        containers= [cw[0] for cw in container_weights]
-        neto = calculate_neto(bruto, weight,containers)
+        containers = [cw[0] for cw in container_weights]
+        neto = calculate_neto(bruto, weight, containers)
 
         query = """
-                INSERT INTO transactions (datetime, direction, truck, containers, bruto, truckTara, neto, produce)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                """
+            INSERT INTO transactions (datetime, direction, truck, containers, bruto, truckTara, neto, produce)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """
         containers_str = ",".join(containers_list)
         cursor.execute(query, (timestamp, direction, truck, containers_str, bruto, weight, neto, produce))
+        session_id = cursor.lastrowid
         mysql.connection.commit()
         cursor.close()
 
-        # Fetching the data for the session
-        cursor = mysql.connection.cursor()
-        cursor.execute("""
-            SELECT * FROM transactions WHERE truck = %s ORDER BY datetime DESC LIMIT 1
-        """, (truck,))
-        transaction = cursor.fetchone()
-        cursor.close()
-        
-        # Return transaction details
-        if transaction:
-            return jsonify({
-                "session_id": session_id,
-                "truck": transaction[2],  # truck
-                "direction": transaction[1],  # direction
-                "bruto": transaction[4],  # bruto
-                "neto": transaction[7],  # neto
-                "produce": transaction[8]  # produce
-            }), 200
+        return jsonify({
+            "id": session_id,
+            "truck": truck,
+            "bruto": bruto,
+            "truckTara": weight,
+            "neto": neto
+        }), 200
 
     return jsonify({"error": "Invalid request"}), 400
 

@@ -1,55 +1,3 @@
-# version: '3.8'
-# services:
-#   weight_service:
-#     build:
-#       context: .
-#       dockerfile: Dockerfile
-#     container_name: weight_app
-#     volumes:
-#       - ./sample_files/sample_uploads:/app/in
-#     ports:
-#       - "5000:5000"
-#     environment:
-#       - MYSQL_HOST=mysql
-#       - MYSQL_PORT=3306
-#       - MYSQL_DATABASE=weight
-#       - MYSQL_USER=weight_user
-#       - MYSQL_PASSWORD=weight_pass
-#     depends_on:
-#       mysql:
-#         condition: service_healthy
-#     healthcheck:
-#       test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
-#       interval: 10s
-#       timeout: 5s
-#       retries: 3
-
-#   mysql:
-#     image: mysql:8.0
-#     container_name: mysql_weight_db
-#     ports:
-#       - "3306:3306"
-#     environment:
-#       MYSQL_ROOT_PASSWORD: root
-#       MYSQL_DATABASE: weight
-#       MYSQL_USER: weight_user
-#       MYSQL_PASSWORD: weight_pass
-#     healthcheck:
-#       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-#       interval: 10s
-#       timeout: 5s
-#       retries: 3
-#     volumes:
-#       - mysql_weight_data:/var/lib/mysql
-#       - ./dump.sql:/docker-entrypoint-initdb.d/dump.sql
-# volumes:
-#   mysql_weight_data:
-# <<<<<<< HEAD
-# networks:
-#   shared_network:
-#     external: true
-# =======
-# >>>>>>> weight
 version: '3.9'
 services:
   weight_service:
@@ -75,8 +23,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
-    networks:
-      - shared_network
 
   mysql:
     image: mysql:8.0
@@ -97,8 +43,6 @@ services:
     volumes:
       - mysql_weight_data:/var/lib/mysql
       - ./dump.sql:/docker-entrypoint-initdb.d/dump.sql
-    networks:
-    - shared_network
     
   test_runner:
     build:
@@ -120,13 +64,6 @@ services:
     restart: "no"
     profiles:
       - ${TEST_PROFILE}
-    networks:
-      - shared_network
-
 
 volumes:
   mysql_weight_data:
-
-networks:
-  shared_network:
-    external: true
