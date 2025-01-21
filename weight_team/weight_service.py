@@ -94,14 +94,11 @@ def get_unknown_containers():
         result = cursor.fetchall()
         container_ids = [row[0] for row in result]
         return jsonify(container_ids), 200
-<<<<<<< HEAD
     except Exception as e:
         return jsonify({"error": f"An error occurred: {str(e)}"}), 500
     finally:
         cursor.close()
 
-=======
->>>>>>> 4a4968ef222960c4f3d0caeaa676673ab61fc6e0
 @app.route('/item/<id>', methods=['GET'])
 def get_item(id):
     """Get information about a specific truck or container"""
