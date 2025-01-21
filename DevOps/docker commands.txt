@@ -1,3 +1,14 @@
-docker build --no-cache -t ci .
-docker run -d -p 8081:5000 -v /var/run/docker.sock:/var/run/docker.sock  ci
-docker exec -t <container id> sh
+# Start ci in DevOps folder on main branch
+docker-compose -f ci-docker-compose.yml up -d
+
+# make sure ci-containeris running
+docker ps
+
+# enter ci container
+docker exec -it ci-container sh
+
+# Start prod inside ci-container
+./prodStart.sh
+
+# make sure prod containers are running
+
