@@ -19,13 +19,18 @@ echo "branch is '$branch_name'"
 docker_compose_build_n_up() {
     local folder=$1
     local env_filename=$2
+    local project=$3
     cd $folder
     if [ $? -ne 0 ]; then
         echo "failed to enter '$folder'"
         return 1
     fi
     docker-compose --env-file "$env_filename" build --no-cache
-    docker-compose --env-file "$env_filename" up --build -d
+    if [ $project -eq "test" ]; then
+        docker-compose --env-file "$env_filename" -p $project up --build -d --no-recreate
+    else
+        docker-compose --env-file "$env_filename" -p $project up --build -d
+    fi
     cd -
 }
 
@@ -41,14 +46,14 @@ case "$branch_name" in
         docker_compose_build_n_up $weight_folder .env.test test
         docker_compose_build_n_up $billing_folder .env.test test 
         # Run E2E tests
-        cd $billing_folder && docker-compose --env-file .env.test down
-        cd $weight_folder && docker-compose --env-file .env.test down
+        cd $billing_folder && docker-compose --env-file .env.test -p test down
+        cd $weight_folder && docker-compose --env-file .env.test -p test down
         # if success:
          #mailer.py (message to send, gitMail)
-            cd $weight_folder
-            docker-compose --env-file .env.prod down && docker-compose --env-file .env.prod up -d 
-            cd $billing_folder
-            docker-compose --env-file .env.prod down && docker-compose --env-file .env.prod up -d 
+            cd $weight_folder && docker-compose --env-file .env.prod -p prod down && \
+            docker_compose_build_n_up $weight_folder .env.prod prod
+            cd $billing_folder && docker-compose --env-file .env.prod -p prod down && \
+            docker_compose_build_n_up $billing_folder .env.prod prod
         # else:
         #mailer.py (message to send, gitMail)
             # send mail to pusher + devops
@@ -66,8 +71,8 @@ case "$branch_name" in
         python3 mailer.py "Hello, you pushed into a branch on git", "$gitMail"
         # else:
         #     send failure success to push
-        cd $billing_folder && docker-compose --env-file .env.test down
-        cd $weight_folder && docker-compose --env-file .env.test down
+        cd $billing_folder && docker-compose --env-file .env.test -p test down
+        cd $weight_folder && docker-compose --env-file .env.test -p test down
         ;;
     *)
         echo "Unknown branch name: $branch_name"
