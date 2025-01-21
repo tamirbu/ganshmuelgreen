@@ -122,12 +122,12 @@ class TestWeightAPI(unittest.TestCase):
         """
         Test the /batch-weight endpoint with a valid file from Docker volume.
         """
-        test_file_path = Path('/app/in/containers1.csv')  # File mounted from Docker volume
-        data = {
-            'file': str(test_file_path)
-        }
-        with open(test_file_path, 'rb') as test_file:
-            response = self.client.post('/batch-weight', data={"file": test_file})
+        test_file_path = Path('containers1.csv')  # File mounted from Docker volume
+   
+        response = self.client.post('/batch-weight', 
+                data={"file": str(test_file_path)},
+                content_type='application/x-www-form-urlencoded')
+
         self.assertIn(response.status_code, [200, 404])  # File might not exist
         self.assertIsInstance(response.json, dict)
 
