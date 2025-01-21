@@ -96,40 +96,85 @@ def health():
 #         if cursor:
 #             cursor.close()
 
+# @app.route('/weight', methods=['GET'])
+# def get_weights():
+#     t1 = request.args.get('from', datetime.now().strftime('%Y%m%d') + "000000")
+#     t2 = request.args.get('to', datetime.now().strftime('%Y%m%d%H%M%S'))
+#     f = request.args.get('filter', 'in,out,none').split(',')
+
+#     t1_formatted = datetime.strptime(t1, '%Y%m%d%H%M%S').strftime('%Y-%m-%d %H:%M:%S')
+#     t2_formatted = datetime.strptime(t2, '%Y%m%d%H%M%S').strftime('%Y-%m-%d %H:%M:%S')
+
+#     cursor = mysql.connection.cursor()
+#     query = f"""
+#         SELECT id, direction, bruto, neto, produce, containers
+#         FROM transactions
+#         WHERE datetime BETWEEN %s AND %s
+#           AND direction IN ({','.join(['%s'] * len(f))})
+#     """
+#     cursor.execute(query, [t1_formatted, t2_formatted, *f])
+#     results = cursor.fetchall()
+#     cursor.close()
+
+#     output = []
+#     for row in results:
+#         containers = row[5].split(',') 
+#         neto = row[3] if row[3] is not None else "na"
+#         output.append({
+#             "id": row[0],
+#             "direction": row[1],
+#             "bruto": row[2],
+#             "neto": neto,
+#             "produce": row[4],
+#             "containers": containers
+#         })
+#     return jsonify(output), 200
+
 @app.route('/weight', methods=['GET'])
 def get_weights():
-    t1 = request.args.get('from', datetime.now().strftime('%Y%m%d') + "000000")
-    t2 = request.args.get('to', datetime.now().strftime('%Y%m%d%H%M%S'))
-    f = request.args.get('filter', 'in,out,none').split(',')
+    try:
+        t1 = request.args.get('from', datetime.now().strftime('%Y%m%d') + "000000")
+        t2 = request.args.get('to', datetime.now().strftime('%Y%m%d%H%M%S'))
+        f = request.args.get('filter', 'in,out,none').split(',')
 
-    t1_formatted = datetime.strptime(t1, '%Y%m%d%H%M%S').strftime('%Y-%m-%d %H:%M:%S')
-    t2_formatted = datetime.strptime(t2, '%Y%m%d%H%M%S').strftime('%Y-%m-%d %H:%M:%S')
+        try:
+            t1_formatted = datetime.strptime(t1, '%Y%m%d%H%M%S').strftime('%Y-%m-%d %H:%M:%S')
+            t2_formatted = datetime.strptime(t2, '%Y%m%d%H%M%S').strftime('%Y-%m-%d %H:%M:%S')
+        except ValueError as ve:
+            return jsonify({"error": "Invalid date format. Expected format: YYYYMMDDHHMMSS"}), 400
 
-    cursor = mysql.connection.cursor()
-    query = f"""
-        SELECT id, direction, bruto, neto, produce, containers
-        FROM transactions
-        WHERE datetime BETWEEN %s AND %s
-          AND direction IN ({','.join(['%s'] * len(f))})
-    """
-    cursor.execute(query, [t1_formatted, t2_formatted, *f])
-    results = cursor.fetchall()
-    cursor.close()
+        if not f or all(not direction for direction in f):
+            return jsonify({"error": "Filter parameter cannot be empty"}), 400
 
-    output = []
-    for row in results:
-        containers = row[5].split(',') 
-        neto = row[3] if row[3] is not None else "na"
-        output.append({
-            "id": row[0],
-            "direction": row[1],
-            "bruto": row[2],
-            "neto": neto,
-            "produce": row[4],
-            "containers": containers
-        })
-    return jsonify(output), 200
-    
+        cursor = mysql.connection.cursor()
+        query = f"""
+            SELECT id, direction, bruto, neto, produce, containers
+            FROM transactions
+            WHERE datetime BETWEEN %s AND %s
+              AND direction IN ({','.join(['%s'] * len(f))})
+        """
+        cursor.execute(query, [t1_formatted, t2_formatted, *f])
+        results = cursor.fetchall()
+        cursor.close()
+
+        output = []
+        for row in results:
+            containers = row[5].split(',') if row[5] else [] 
+            neto = row[3] if row[3] is not None else "na"
+            output.append({
+                "id": row[0],
+                "direction": row[1],
+                "bruto": row[2],
+                "neto": neto,
+                "produce": row[4],
+                "containers": containers
+            })
+
+        return jsonify(output), 200
+
+    except Exception as e:
+        return jsonify({"error": f"An unexpected error occurred: {str(e)}"}), 500
+
 @app.route('/unknown', methods=['GET'])
 def get_unknown_containers():
         cursor = mysql.connection.cursor()
