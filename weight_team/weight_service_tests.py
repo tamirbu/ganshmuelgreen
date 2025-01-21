@@ -19,9 +19,10 @@ class TestWeightAPI(unittest.TestCase):
         """
         Test the /health endpoint to ensure the service health.
         """
-        response = self.client.get('/health')
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json, "OK")
+        tester = app.test_client(self)
+        response = tester.get('/health')
+        self.assertEqual(response.status_code, 200)  # Ensure the status code is correct
+        self.assertEqual(response.data.decode('utf-8'), "OK")  # Check the raw response data
 
     def test_get_weight_no_filters(self):
         """
