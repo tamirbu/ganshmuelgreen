@@ -63,7 +63,7 @@ case "$branch_name" in
         docker_compose_build_n_up $billing_folder .env.test test 
         # Run E2E tests
         # if success:
-            #mailer.py (message to send, gitMail)
+        python3 mailer.py "Hello, you pushed into a branch on git", "$gitMail"
         # else:
         #     send failure success to push
         cd $billing_folder && docker-compose --env-file .env.test down
