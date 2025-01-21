@@ -120,8 +120,6 @@ services:
     restart: "no"
     profiles:
       - ${TEST_PROFILE}
-    networks:
-      - shared_network
 
 
 volumes:
