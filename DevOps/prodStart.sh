@@ -1,3 +1,4 @@
+
 #!/bin/sh
 main_folder="/app"
 repo_folder="$main_folder/ganshmuelgreen"
@@ -15,12 +16,19 @@ FLAG=false
 # Function to check if a container is running or exists
 check_container_running() {
     CONTAINER_NAME=$1
+    echo "Checking for container ${CONTAINER_NAME}..."
+
+    # List all containers (including stopped ones) and check if any match the name
+    container_list=$(docker ps -a --format '{{.Names}}')
+
+    # Debug: print out all containers to see what we are working with
+    echo "All containers: $container_list"
 
     # Check if the container is running (only running containers)
     if docker ps --filter "name=^${CONTAINER_NAME}$" --filter "status=running" -q; then
         echo "Container ${CONTAINER_NAME} is already running."
     # Check if the container exists (even if stopped)
-    elif docker ps -a --filter "name=^${CONTAINER_NAME}$" --format '{{.Names}}' | grep -q "${CONTAINER_NAME}"; then
+    elif echo "$container_list" | grep -q "^${CONTAINER_NAME}$"; then
         echo "Container ${CONTAINER_NAME} exists but is stopped."
         FLAG=true
     else
