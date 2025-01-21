@@ -64,87 +64,83 @@ def add_provider():
 
 @app.route("/rates", methods=["POST"])
 def upload_rates():
-    # get the file from in folder - inner the container
     file_path = "/app/in/rates.xlsx"
-    
-    # ckeck if the file exist
-    if not os.path.exists(file_path):
-        print(f"File {file_path} not found")
-        return jsonify({"error": f"File {file_path} not found"}), 404
+
+    # Check if the file exists and is accessible
+    if not os.path.exists(file_path) or not os.access(file_path, os.R_OK):
+        print(f"File {file_path} not found or not accessible")
+        return jsonify({"error": f"File {file_path} not found or not accessible"}), 404
 
     try:
+        # Load workbook using openpyxl
         from openpyxl import load_workbook
-        wb = load_workbook(filename=file_path)
-        ws = wb.active
-        
-        # open the mysql connaction
+        try:
+            wb = load_workbook(filename=file_path)
+            ws = wb.active
+        except ValueError as ve:
+            print(f"Value error: {ve}")
+            return jsonify({"error": "Invalid file format"}), 400
+        except Exception as e:
+            print(f"Unexpected error while loading file: {e}")
+            return jsonify({"error": "Failed to process file"}), 500
+
+        # Open MySQL connection
         conn = get_db_connection()
         cursor = conn.cursor()
-        
-        # loop on te excel file - by row
-        rows = list(ws.rows)[1:]
+
+        # Process rows
+        rows = list(ws.rows)[1:]  # Skip header row
         for row in rows:
             try:
                 product = str(row[0].value)
                 rate = float(row[1].value)
                 scope = str(row[2].value)
-                
-                #print(f"Processing row: Product={product}, Rate={rate}, Scope={scope}")
 
-                # row scope = provider id               
                 if scope.upper() != "ALL":
-                    # check if the provider exist on the provider table
                     cursor.execute("SELECT id FROM Provider WHERE id = %s", (scope,))
                     provider_exists = cursor.fetchone()
-                    # if not return error
                     if not provider_exists:
                         print(f"Provider {scope} not found")
-                        return jsonify({
-                            "error": f"Provider with ID {scope} does not exist in Provider table"
-                        }), 404
+                        return jsonify({"error": f"Provider with ID {scope} does not exist"}), 404
 
-                # row scope = all
                 if scope.upper() == "ALL":
-                    # delete row where product = product && scope = all
                     cursor.execute(
-                        "DELETE FROM Rates WHERE product_id = %s AND (scope IS NULL OR scope = 'ALL')", 
+                        "DELETE FROM Rates WHERE product_id = %s AND (scope IS NULL OR scope = 'ALL')",
                         (product,)
                     )
-                    # add row to rate table by the current row informations
                     cursor.execute(
                         "INSERT INTO Rates (product_id, rate, scope) VALUES (%s, %s, 'ALL')",
                         (product, rate)
                     )
-                # if the provider id in provider table && scope = provider id
                 else:
-                    # delete row where product = product && scope = scope
                     cursor.execute(
                         "DELETE FROM Rates WHERE product_id = %s AND scope = %s",
                         (product, scope)
                     )
-                   # add row to rate table by the current row informations
                     cursor.execute(
                         "INSERT INTO Rates (product_id, rate, scope) VALUES (%s, %s, %s)",
                         (product, rate, scope)
                     )
-                # update the changes in the db
+
                 conn.commit()
-            
-            # handling value row error
             except ValueError as ve:
                 print(f"Value error in row: {ve}")
                 return jsonify({"error": f"Invalid data format: {ve}"}), 400
-            # handling db error
             except mysql.connector.Error as me:
                 print(f"Database error: {me}")
                 return jsonify({"error": f"Database error: {me}"}), 500
 
-        # close connaction db
+        # Close resources
         cursor.close()
         conn.close()
         wb.close()
-        
+
         return jsonify({"message": "Rates updated successfully!"}), 200
+
+    except Exception as e:
+        print(f"Error occurred: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
     
     except Exception as e:
         print(f"Error occurred: {str(e)}")
