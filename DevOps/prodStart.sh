@@ -7,9 +7,25 @@ weight_folder="$repo_folder/weight_team"
 
 git clone --single-branch --branch main https://github.com/tamirbu/ganshmuelgreen.git
 cd $weight_folder
-docker-compose --env-file .env.prod up -d 
+if [ $? -ne 0 ]; then
+    echo "failed to enter '$weight_folder'"
+    return 1
+fi
+docker-compose --env-file .env.prod build --no-cache
+docker-compose --env-file .env.prod up --build -d
+cd -
+
 cd $billing_folder
-docker-compose --env-file .env.prod up -d 
-cd $main_folder
-echo "removing $repo_folder..."
-rm -rf $repo_folder
+if [ $? -ne 0 ]; then
+    echo "failed to enter '$billing_folder'"
+    return 1
+fi
+docker-compose --env-file .env.prod build --no-cache
+docker-compose --env-file .env.prod up --build -d
+cd -
+
+cd $main_folder && echo "Removing $repo_folder..." && rm -rf $repo_folder
+
+
+
+
