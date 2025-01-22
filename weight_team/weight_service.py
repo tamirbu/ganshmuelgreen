@@ -38,9 +38,9 @@ def health():
         cursor = mysql.connection.cursor()
         cursor.execute("SELECT 1")
         cursor.close()
-        return "OK", 200
+        return jsonify({"status": "OK"}), 200
     except Exception as e:
-        return "Failure", 500
+         return jsonify({"status": "Failure"}), 500
         
 
 @app.route('/weight', methods=['GET'])
