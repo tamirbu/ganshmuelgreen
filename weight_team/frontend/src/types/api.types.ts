@@ -22,7 +22,11 @@ export interface WeightFormData {
   force: boolean;
   produce: string;
 }
-
+export interface ItemData {
+  id: string;
+  tara: number | 'na';
+  sessions: string[];
+}
 export interface SessionData {
   id: string;
   truck: string;
