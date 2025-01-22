@@ -1,0 +1,26 @@
+# Start ci in DevOps folder on main branch
+docker-compose -f ci-docker-compose.yml up -d
+
+# make sure ci-container is running
+docker ps
+
+# enter ci container
+docker exec -it ci-container sh
+
+# Start prod inside ci-container
+./prodStart.sh
+
+# make sure prod containers are running
+docker ps
+
+##### Demo
+git checkout billing
+git pull origin billing
+echo "demo" >> demo.txt
+git push origin billing
+# go to container
+docker logs -f ci-container
+
+# github.com -> create pull request to master -> merge
+docker logs -f ci-container
+
