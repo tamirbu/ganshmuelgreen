@@ -22,5 +22,5 @@ git push origin billing
 docker logs -f ci-container
 
 # github.com -> create pull request to master -> merge
-docker logs -f ci-container
+watch -n 1 docker ps
 
