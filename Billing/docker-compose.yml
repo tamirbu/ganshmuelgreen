@@ -1,4 +1,4 @@
-version: '3.8'
+version: '3.9'
 
 services:
   app:
@@ -48,6 +48,7 @@ services:
       - ./billingdb.sql:/docker-entrypoint-initdb.d/billingdb.sql
     networks:
       - shared_network
+ 
 
 volumes:
   mysql_data:
