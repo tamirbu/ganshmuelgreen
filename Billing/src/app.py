@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_file
 import mysql.connector
 import os
 from openpyxl import load_workbook
@@ -403,33 +403,17 @@ def get_rates():
         return jsonify({"error": "File not found"}), 404
 
     try:
-        # Load workbook and get active sheet
-        workbook = load_workbook(file_path)
-        sheet = workbook.active
-
-        # Get headers from first row
-        headers = [cell.value for cell in sheet[1]]
-
-        # Convert to JSON response
-        rates_data = []
-        # Start from second row (skip headers)
-        for row in sheet.iter_rows(min_row=2, values_only=True):
-            # Create dictionary using headers and row values
-            rate_entry = {
-                "product": row[headers.index('Product')],
-                "rate": row[headers.index('Rate')],
-                "scope": row[headers.index('Scope')]
-            }
-            rates_data.append(rate_entry)
-
-        # Create response with download suggestion header
-        response = jsonify(rates_data)
-        response.headers['Content-Disposition'] = 'inline; filename="rates.json"'
-        return response, 200
-
+        # Return the file for download
+        return send_file(
+            file_path,
+            as_attachment=True,
+            download_name="rates.xlsx",  # Suggested file name for download
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"  # Correct MIME type for Excel files
+        )
     except Exception as e:
         print(f"Error: {str(e)}")  # Debug print
         return jsonify({"error": "Failed to process rates", "details": str(e)}), 500
+
 
 def get_default_dates():
     """Returns the default t1 (start of the month) and t2 (current time) as strings."""
