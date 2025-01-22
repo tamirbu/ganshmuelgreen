@@ -1,0 +1,158 @@
+Overview
+This Flask application serves as an API for managing weight transactions. It connects to a MySQL database and supports the processing of CSV and JSON files for data input.
+Requirements
+
+Python 3.x
+Flask
+Flask-MySQLdb
+Pandas (for CSV processing)
+JSON library (for JSON processing)
+
+Setup
+
+
+Install required packages:
+bashCopy codepip install Flask Flask-MySQLdb
+
+
+Configure the MySQL database connection in the application settings.
+
+
+API Endpoints
+1. Health Check
+
+Endpoint: /health
+Method: GET
+Response:
+
+Success: 200 OK
+Failure: 500 Internal Server Error
+
+
+
+2. Retrieve Weight Transactions
+
+Endpoint: /weight
+Method: GET
+Query Parameters:
+
+from (optional): Start date-time for filtering.
+to (optional): End date-time for filtering.
+filter (optional): Comma-separated values defining the direction to filter (in, out, none).
+
+
+Response: JSON array of weight transactions
+jsonCopy code[
+  {
+    "id": "int",
+    "direction": "string",
+    "bruto": "int",
+    "neto": "int or 'na'",
+    "produce": "string",
+    "containers": ["string"]
+  }
+]
+
+
+3. Retrieve Unknown Containers
+
+Endpoint: /unknown
+Method: GET
+Response: JSON array of container IDs with unknown or zero weight
+jsonCopy code["container_id1", "container_id2", ...]
+
+
+4. Retrieve Specific Item Data
+
+Endpoint: /item/<id>
+Method: GET
+Query Parameters:
+
+from (optional): Start date-time for filtering.
+to (optional): End date-time for filtering.
+
+
+Response:
+jsonCopy code{
+  "id": "string",
+  "tara": "number or 'na'",
+  "sessions": ["string"]
+}
+
+
+5. Retrieve Session Data
+
+Endpoint: /session/<id>
+Method: GET
+Response:
+jsonCopy code{
+  "id": "int",
+  "truck": "string or 'na'",
+  "bruto": "int",
+  "truckTara": "int or 'na'",
+  "neto": "int or 'na'"
+}
+
+
+6. Create Weight Transaction
+
+Endpoint: /weight
+Method: POST
+Request Body: JSON
+jsonCopy code{
+  "direction": "string",  // must be 'in', 'out', or 'none'
+  "truck": "string", // optional
+  "containers": "string", // comma-separated container IDs
+  "weight": "float",
+  "unit": "string", // either 'kg' or 'lbs'
+  "produce": "string" // optional
+}
+
+Response:
+
+Success: 200 OK with session ID
+Error: 400 Bad Request
+
+
+
+7. Batch Upload of Container Weights
+
+Endpoint: /batch-weight
+Method: POST
+Request: Form-data with file upload
+Response:
+
+Success: 200 OK with success message
+Error: 400 Bad Request for unsupported file formats
+
+
+
+Database Schema
+
+transactions
+
+id (INT, Primary Key, Auto Increment)
+direction (VARCHAR)
+bruto (INT)
+neto (INT)
+produce (VARCHAR)
+containers (VARCHAR)
+datetime (DATETIME)
+
+
+containers_registered
+
+container_id (VARCHAR, Primary Key)
+weight (FLOAT)
+unit (VARCHAR)
+
+
+
+Error Handling
+
+Standard error responses returned for invalid requests, including appropriate status codes
+
+
+
+
+
