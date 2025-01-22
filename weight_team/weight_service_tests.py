@@ -4,7 +4,7 @@ from flask.testing import FlaskClient
 from pathlib import Path
 from weight_service import app, calculate_neto 
 sys.path.append(str(Path(__file__).parent.resolve()))
-
+id_exsist=''
 
 class TestWeightAPI(unittest.TestCase):
 
@@ -55,12 +55,16 @@ class TestWeightAPI(unittest.TestCase):
             "containers": "C-123,C-456",
             "weight": 25000,
             "unit": "kg",
-            "produce": "oranges"
+            "produce": "oranges",
+            "force": True
         }
         response = self.client.post('/weight', data=json.dumps(data), content_type='application/json')
         self.assertEqual(response.status_code, 200)
-        self.assertIn("session_id", response.json)
-
+        self.assertIn("id", response.json)
+        global id_exsist
+        id_exsist = response.json["id"] 
+        print(id_exsist)
+        
     def test_post_weight_out(self):
         """
         Test the /weight endpoint for direction "out".
@@ -122,22 +126,35 @@ class TestWeightAPI(unittest.TestCase):
         """
         Test the /batch-weight endpoint with a valid file from Docker volume.
         """
-        test_file_path = Path('/app/in/containers1.csv')  # File mounted from Docker volume
-        data = {
-            'file': str(test_file_path)
-        }
-        with open(test_file_path, 'rb') as test_file:
-            response = self.client.post('/batch-weight', data={"file": test_file})
+        test_file_path = Path('containers1.csv')  # File mounted from Docker volume
+   
+        response = self.client.post('/batch-weight', 
+                data={"file": str(test_file_path)},
+                content_type='application/x-www-form-urlencoded')
+
         self.assertIn(response.status_code, [200, 404])  # File might not exist
         self.assertIsInstance(response.json, dict)
-
     def test_session_valid_id(self):
         """
         Test the /session/<id> endpoint with a valid session ID.
-        """
-        session_id = 1  # Assume this ID exists in the database
+    """
+        data = {
+            "direction": "in",
+            "truck": "T-54321",
+            "containers": "C-789,C-101",
+            "weight": 20000,
+            "unit": "kg",
+            "produce": "apples",
+            "force":True
+        }
+        response = self.client.post('/weight', data=json.dumps(data), content_type='application/json')
+        self.assertEqual(response.status_code, 200, f"POST /weight failed with status {response.status_code} and response: {response.json}")
+    
+        session_id = response.json.get("id")
+        self.assertIsNotNone(session_id, "Session ID should not be None")
+
         response = self.client.get(f'/session/{session_id}')
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 200, f"GET /session/{session_id} failed with status {response.status_code} and response: {response.json}")
         self.assertIn("id", response.json)
         self.assertIn("truck", response.json)
         self.assertIn("bruto", response.json)
@@ -151,22 +168,6 @@ class TestWeightAPI(unittest.TestCase):
         self.assertEqual(response.status_code, 404)
         self.assertIn("error", response.json)
 
-    # def test_calculate_neto_valid_data(self):
-    #     """
-    #     Test the calculate_neto function with valid data.
-    #     """
-    #     bruto = 25000
-    #     truck_tara = 10000
-    #     container_taras = [3000, 2000]
-    #     expected_neto = 25000 - 10000 - 5000
-    #     response = self.client.post('/weight', data=json.dumps({
-    #         "bruto": bruto,
-    #         "truck_tara": truck_tara,
-    #         "container_taras": container_taras
-    #     }), content_type='application/json')
-    #     self.assertEqual(response.status_code, 200)
-    #     self.assertEqual(response.json.get("neto"), expected_neto)
-    
     def test_calculate_neto_function(self):
       bruto = 25000
       truck_tara = 10000
@@ -189,7 +190,7 @@ class TestWeightAPI(unittest.TestCase):
         }
         response = self.client.post('/weight', data=json.dumps(data), content_type='application/json')
         self.assertEqual(response.status_code, 200)
-        self.assertIn("session_id", response.json)
+        self.assertIn("id", response.json)
 
     def test_post_weight_none(self):
         """
@@ -204,7 +205,7 @@ class TestWeightAPI(unittest.TestCase):
         }
         response = self.client.post('/weight', data=json.dumps(data), content_type='application/json')
         self.assertEqual(response.status_code, 200)
-        self.assertIn("session_id", response.json)
+        self.assertIn("id", response.json)
 
 
 if __name__ == '__main__':
