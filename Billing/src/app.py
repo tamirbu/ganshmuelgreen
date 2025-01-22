@@ -64,72 +64,6 @@ def add_provider():
         return jsonify({"error": str(err)}), 500
 
 
-    # return "HELLO"
-    print("Received request to upload ...")
-    file_path = "/app/in/rates.xlsx"
-    
-    if not os.path.exists(file_path):
-        print(f"File {file_path} not found")
-        return jsonify({"error": f"File {file_path} not found"}), 404
-
-    try:
-        # Use openpyxl to read the Excel file
-        from openpyxl import load_workbook
-        wb = load_workbook(filename=file_path)
-        ws = wb.active  # Get the active worksheet
-        
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        # Skip the header row and process data rows
-        rows = list(ws.rows)[1:]  # Skip header row
-        for row in rows:
-            try:
-                # Get values from cells
-                product = str(row[0].value)  # Product column
-                rate = float(row[1].value)   # Rate column
-                scope = str(row[2].value)    # Scope column
-                
-                print(f"Processing row: Product={product}, Rate={rate}, Scope={scope}")
-                
-                if scope.upper() == "ALL":
-                    cursor.execute(
-                        "DELETE FROM Rates WHERE product_id = %s AND (scope IS NULL OR scope = 'ALL')", 
-                        (product,)
-                    )
-                    cursor.execute(
-                        "INSERT INTO Rates (product_id, rate, scope) VALUES (%s, %s, 'ALL')",
-                        (product, rate)
-                    )
-                else:
-                    cursor.execute(
-                        "DELETE FROM Rates WHERE product_id = %s AND scope = %s",
-                        (product, scope)
-                    )
-                    cursor.execute(
-                        "INSERT INTO Rates (product_id, rate, scope) VALUES (%s, %s, %s)",
-                        (product, rate, scope)
-                    )
-                
-                conn.commit()
-                
-            except ValueError as ve:
-                print(f"Value error in row: {ve}")
-                return jsonify({"error": f"Invalid data format: {ve}"}), 400
-            except mysql.connector.Error as me:
-                print(f"Database error: {me}")
-                return jsonify({"error": f"Database error: {me}"}), 500
-
-        cursor.close()
-        conn.close()
-        wb.close()
-        
-        return jsonify({"message": "Rates updated successfully!"}), 200
-
-    except Exception as e:
-        print(f"Error occurred: {str(e)}")
-        return jsonify({"error": str(e)}), 500
-
 @app.route("/rates", methods=["POST"])
 def upload_rates():
     file_path = "/app/in/rates.xlsx"
@@ -298,7 +232,7 @@ def register_truck():
         return jsonify({"error": str(err)}), 500
 
 # put-------------------------------------------------------------------------------------------------------
-@app.route("/truckExist/<id>", methods=["PUT"])
+@app.route("/truck/<id>", methods=["PUT"])
 def update_truck(id):
     """
     Updates or creates a truck entry in the database.
