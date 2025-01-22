@@ -34,7 +34,13 @@ def convert_to_kg(weight: Union[int, float, str], unit: str = 'kg') -> int:
 
 @app.route('/health', methods=['GET'])
 def health():
-    return "OK", 200
+    try:
+        cursor = mysql.connection.cursor()
+        cursor.execute("SELECT 1")
+        cursor.close()
+        return "OK", 200
+    except Exception as e:
+        return "Failure", 500
         
 
 @app.route('/weight', methods=['GET'])
