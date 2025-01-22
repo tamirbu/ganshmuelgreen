@@ -1,0 +1,212 @@
+**API Endpoint Documentation**
+
+---
+
+### **1. `/provider` (POST)**
+- **Expected Input:**
+  JSON containing a `name` field (provider name).
+  Example:
+  ```json
+  {
+    "name": "Provider Name"
+  }
+  ```
+
+- **Response:**
+  A unique provider ID in the system.
+  Example:
+  ```json
+  {
+    "id": 1,
+    "name": "Provider Name"
+  }
+  ```
+
+---
+
+### **2. `/rates` (POST)**
+- **Expected Input:**
+  No direct input; this endpoint reads an Excel file located at `/app/in/rates.xlsx` on the server.
+
+- **Response:**
+  Confirmation that the file was processed and its content was uploaded to the system.
+  Example:
+  ```json
+  {
+    "message": "Rates updated successfully!"
+  }
+  ```
+
+---
+
+### **3. `/truck` (POST)**
+- **Expected Input:**
+  JSON containing truck details:
+  - `id` (truck license plate).
+  - `provider_id` (ID of the provider the truck belongs to).
+
+  Example:
+  ```json
+  {
+    "id": "12345678",
+    "provider_id": 1
+  }
+  ```
+
+- **Response:**
+  Confirmation of truck registration.
+  Example:
+  ```json
+  {
+    "message": "Truck registered successfully",
+    "id": "12345678",
+    "provider_id": 1
+  }
+  ```
+
+---
+
+### **4. `/truck/<id>` (PUT)**
+- **Expected Input:**
+  Truck ID in the URL (`<id>`) and JSON with a `provider_id` field to update the provider.
+  Example:
+  URL: `/truck/12345678`
+  JSON:
+  ```json
+  {
+    "provider_id": 2
+  }
+  ```
+
+- **Response:**
+  Confirmation of the truck update.
+  Example:
+  ```json
+  {
+    "id": "12345678",
+    "provider_id": 2
+  }
+  ```
+
+---
+
+### **5. `/provider/<id>` (PUT)**
+- **Expected Input:**
+  Provider ID in the URL (`<id>`) and JSON with a `name` field to update the provider.
+  Example:
+  URL: `/provider/1`
+  JSON:
+  ```json
+  {
+    "name": "New Provider Name"
+  }
+  ```
+
+- **Response:**
+  Confirmation of the provider update or creation.
+  Example:
+  ```json
+  {
+    "message": "Provider updated",
+    "id": 1,
+    "previous_name": "Old Provider Name",
+    "new_name": "New Provider Name"
+  }
+  ```
+
+---
+
+### **6. `/truckExists/<id>` (GET)**
+- **Expected Input:**
+  Truck ID in the URL (`<id>`).
+  Example: `/truckExists/12345678`
+
+- **Response:**
+  Confirmation of whether the truck exists.
+  Example:
+  ```json
+  {
+    "message": "Truck exists",
+    "id": "12345678"
+  }
+  ```
+
+---
+
+### **7. `/rates` (GET)**
+- **Expected Input:**
+  No parameters; this endpoint provides a downloadable file.
+
+- **Response:**
+  Returns an Excel file (`rates.xlsx`) containing rate information.
+
+---
+
+### **8. `/truck/<id>` (GET)**
+- **Expected Input:**
+  Truck ID in the URL (`<id>`) and optional query parameters:
+  - `from` (start date, format: `yyyymmddhhmmss`).
+  - `to` (end date, format: `yyyymmddhhmmss`).
+
+  Example: `/truck/12345678?from=20240101000000&to=20240201000000`
+
+- **Response:**
+  JSON containing truck details, including tara (empty weight) and session IDs within the date range.
+  Example:
+  ```json
+  {
+    "id": "12345678",
+    "tara": "na",
+    "sessions": ["abc123", "def456"]
+  }
+  ```
+
+---
+
+### **9. `/bill/<id>` (GET)**
+- **Expected Input:**
+  Provider ID in the URL (`<id>`) and optional query parameters:
+  - `from` (start date, format: `yyyymmddhhmmss`).
+  - `to` (end date, format: `yyyymmddhhmmss`).
+
+  Example: `/bill/1?from=20240101000000&to=20240201000000`
+
+- **Response:**
+  JSON containing billing information for the provider, including the number of trucks, sessions, and product details.
+  Example:
+  ```json
+  {
+    "id": "1",
+    "name": "Provider Name",
+    "from": "01/01/2024",
+    "to": "01/02/2024",
+    "truckCount": 5,
+    "sessionCount": 20,
+    "products": [
+      {
+        "product": "Product A",
+        "count": 10,
+        "amount": 1000,
+        "rate": 5,
+        "pay": 5000
+      }
+    ],
+    "total": 5000
+  }
+  ```
+
+---
+
+### **10. `/health` (GET)**
+- **Expected Input:**
+  No parameters.
+
+- **Response:**
+  Server status.
+  Example:
+  ```json
+  {
+    "status": "OK"
+  }
+  ```
+

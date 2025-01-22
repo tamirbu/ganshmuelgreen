@@ -90,7 +90,11 @@ def upload_rates():
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        # Process rows
+        # Step 1: Clear the Rates table
+        cursor.execute("DELETE FROM Rates")
+        conn.commit()
+
+        # Step 2: Process rows from the Excel file
         rows = list(ws.rows)[1:]  # Skip header row
         for row in rows:
             try:
@@ -98,27 +102,13 @@ def upload_rates():
                 rate = float(row[1].value)
                 scope = str(row[2].value)
 
-                if scope.upper() != "ALL":
-                    cursor.execute("SELECT id FROM Provider WHERE id = %s", (scope,))
-                    provider_exists = cursor.fetchone()
-                    if not provider_exists:
-                        print(f"Provider {scope} not found")
-                        return jsonify({"error": f"Provider with ID {scope} does not exist"}), 404
-
+                # Insert rows into the Rates table
                 if scope.upper() == "ALL":
-                    cursor.execute(
-                        "DELETE FROM Rates WHERE product_id = %s AND (scope IS NULL OR scope = 'ALL')",
-                        (product,)
-                    )
                     cursor.execute(
                         "INSERT INTO Rates (product_id, rate, scope) VALUES (%s, %s, 'ALL')",
                         (product, rate)
                     )
                 else:
-                    cursor.execute(
-                        "DELETE FROM Rates WHERE product_id = %s AND scope = %s",
-                        (product, scope)
-                    )
                     cursor.execute(
                         "INSERT INTO Rates (product_id, rate, scope) VALUES (%s, %s, %s)",
                         (product, rate, scope)
@@ -143,10 +133,7 @@ def upload_rates():
         print(f"Error occurred: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
-    
-    except Exception as e:
-        print(f"Error occurred: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+
 
 @app.route("/truck", methods=["POST"])
 def register_truck():
